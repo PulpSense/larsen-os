@@ -202,14 +202,10 @@ struct ConsistencyWidgetView: View {
     }
 
     private var currentStreak: Int {
-        var date = entry.date
-        var streak = 0
-        while entry.state.completedDays.contains(DayKey.string(from: date)) {
-            streak += 1
-            guard let prior = Calendar.current.date(byAdding: .day, value: -1, to: date) else { break }
-            date = prior
-        }
-        return streak
+        ConsistencyStreak.current(
+            completedDays: entry.state.completedDays,
+            through: entry.date
+        )
     }
 }
 

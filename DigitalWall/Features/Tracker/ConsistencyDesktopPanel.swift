@@ -115,16 +115,11 @@ private struct ConsistencyDesktopPanelContent: View {
     }
 
     private func currentStreak(now: Date) -> Int {
-        var date = now
-        var streak = 0
-        while store.isCompleted(date) {
-            streak += 1
-            guard let prior = TrackerCalendar.calendar.date(byAdding: .day, value: -1, to: date) else {
-                break
-            }
-            date = prior
-        }
-        return streak
+        ConsistencyStreak.current(
+            completedDays: store.completedDays,
+            through: now,
+            calendar: TrackerCalendar.calendar
+        )
     }
 }
 

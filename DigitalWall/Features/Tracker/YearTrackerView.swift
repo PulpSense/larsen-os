@@ -199,14 +199,11 @@ struct YearTrackerView: View {
     }
 
     private var currentStreak: Int {
-        var date = Date()
-        var streak = 0
-        while store.isCompleted(date) {
-            streak += 1
-            guard let previous = calendar.date(byAdding: .day, value: -1, to: date) else { break }
-            date = previous
-        }
-        return streak
+        ConsistencyStreak.current(
+            completedDays: store.completedDays,
+            through: Date(),
+            calendar: calendar
+        )
     }
 }
 

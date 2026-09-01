@@ -200,6 +200,32 @@ enum DayKey {
     }
 }
 
+enum ConsistencyStreak {
+    static func current(
+        completedDays: Set<String>,
+        through date: Date,
+        calendar: Calendar = .current
+    ) -> Int {
+        var cursor = date
+        if !completedDays.contains(DayKey.string(from: cursor)) {
+            guard let yesterday = calendar.date(byAdding: .day, value: -1, to: cursor) else {
+                return 0
+            }
+            cursor = yesterday
+        }
+
+        var streak = 0
+        while completedDays.contains(DayKey.string(from: cursor)) {
+            streak += 1
+            guard let prior = calendar.date(byAdding: .day, value: -1, to: cursor) else {
+                break
+            }
+            cursor = prior
+        }
+        return streak
+    }
+}
+
 enum WorldClockOrdering {
     static func moving(
         _ sourceID: UUID,

@@ -90,6 +90,39 @@ enum WidgetContentTests {
             "The second consistency toggle must unmark today."
         )
 
+        var streakCalendar = Calendar(identifier: .gregorian)
+        streakCalendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let septemberFirst = streakCalendar.date(from: DateComponents(
+            year: 2026,
+            month: 9,
+            day: 1,
+            hour: 12
+        ))!
+        precondition(
+            ConsistencyStreak.current(
+                completedDays: ["2026-08-30", "2026-08-31"],
+                through: septemberFirst,
+                calendar: streakCalendar
+            ) == 2,
+            "A current streak must include yesterday when today is not marked yet."
+        )
+        precondition(
+            ConsistencyStreak.current(
+                completedDays: ["2026-08-30", "2026-08-31", "2026-09-01"],
+                through: septemberFirst,
+                calendar: streakCalendar
+            ) == 3,
+            "Marking today must extend the current streak."
+        )
+        precondition(
+            ConsistencyStreak.current(
+                completedDays: ["2026-08-30"],
+                through: septemberFirst,
+                calendar: streakCalendar
+            ) == 0,
+            "A missed yesterday must end the current streak."
+        )
+
         precondition(
             state.worldClocks.count == 6,
             "A migrated wall must start with six editable world clocks."
