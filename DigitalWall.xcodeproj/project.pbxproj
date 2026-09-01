@@ -1,0 +1,488 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 60;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A00100000000000000000001 /* DigitalWallApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00100000000000000000001 /* DigitalWallApp.swift */; };
+		A00100000000000000000002 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00100000000000000000002 /* DashboardView.swift */; };
+		A00100000000000000000003 /* WallStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00100000000000000000003 /* WallStore.swift */; };
+		A00100000000000000000004 /* AppConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00100000000000000000004 /* AppConfiguration.swift */; };
+		A00100000000000000000005 /* WallState.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00100000000000000000005 /* WallState.swift */; };
+		A00100000000000000000006 /* WallPersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00100000000000000000006 /* WallPersistence.swift */; };
+		A00100000000000000000007 /* LocalImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00100000000000000000007 /* LocalImageView.swift */; };
+		A00100000000000000000008 /* VisionBoardEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00100000000000000000008 /* VisionBoardEditorView.swift */; };
+		A00100000000000000000009 /* VisionBoardPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00100000000000000000009 /* VisionBoardPresenter.swift */; };
+		A0010000000000000000000A /* YearTrackerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0010000000000000000000A /* YearTrackerView.swift */; };
+		A0010000000000000000000B /* PhrasesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0010000000000000000000B /* PhrasesView.swift */; };
+		A0010000000000000000000C /* PhraseDesktopPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0010000000000000000000E /* PhraseDesktopPanel.swift */; };
+		A0010000000000000000000D /* DesktopPanelSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0010000000000000000000F /* DesktopPanelSupport.swift */; };
+		A0010000000000000000000E /* VisionBoardDesktopPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00100000000000000000010 /* VisionBoardDesktopPanel.swift */; };
+		A0010000000000000000000F /* ConsistencyDesktopPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00100000000000000000011 /* ConsistencyDesktopPanel.swift */; };
+		A00100000000000000000010 /* WorldClocksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00100000000000000000012 /* WorldClocksView.swift */; };
+		A00100000000000000000011 /* WorldClockDesktopPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00100000000000000000013 /* WorldClockDesktopPanel.swift */; };
+		A00100000000000000000012 /* YearProgressDesktopPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00100000000000000000014 /* YearProgressDesktopPanel.swift */; };
+		A00100000000000000000013 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B00100000000000000000015 /* Assets.xcassets */; };
+		A00100000000000000000014 /* DigitalWallWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = B00300000000000000000002 /* DigitalWallWidget.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		A00200000000000000000001 /* DigitalWallWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00200000000000000000001 /* DigitalWallWidget.swift */; };
+		A00200000000000000000002 /* AppConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00100000000000000000004 /* AppConfiguration.swift */; };
+		A00200000000000000000003 /* WallState.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00100000000000000000005 /* WallState.swift */; };
+		A00200000000000000000004 /* WallPersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00100000000000000000006 /* WallPersistence.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		B00100000000000000000001 /* DigitalWallApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DigitalWallApp.swift; sourceTree = "<group>"; };
+		B00100000000000000000002 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
+		B00100000000000000000003 /* WallStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallStore.swift; sourceTree = "<group>"; };
+		B00100000000000000000004 /* AppConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfiguration.swift; sourceTree = "<group>"; };
+		B00100000000000000000005 /* WallState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallState.swift; sourceTree = "<group>"; };
+		B00100000000000000000006 /* WallPersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallPersistence.swift; sourceTree = "<group>"; };
+		B00100000000000000000007 /* LocalImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalImageView.swift; sourceTree = "<group>"; };
+		B00100000000000000000008 /* VisionBoardEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisionBoardEditorView.swift; sourceTree = "<group>"; };
+		B00100000000000000000009 /* VisionBoardPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisionBoardPresenter.swift; sourceTree = "<group>"; };
+		B0010000000000000000000A /* YearTrackerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YearTrackerView.swift; sourceTree = "<group>"; };
+		B0010000000000000000000B /* PhrasesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhrasesView.swift; sourceTree = "<group>"; };
+		B0010000000000000000000C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		B0010000000000000000000D /* DigitalWall.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = DigitalWall.entitlements; sourceTree = "<group>"; };
+		B0010000000000000000000E /* PhraseDesktopPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhraseDesktopPanel.swift; sourceTree = "<group>"; };
+		B0010000000000000000000F /* DesktopPanelSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesktopPanelSupport.swift; sourceTree = "<group>"; };
+		B00100000000000000000010 /* VisionBoardDesktopPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisionBoardDesktopPanel.swift; sourceTree = "<group>"; };
+		B00100000000000000000011 /* ConsistencyDesktopPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsistencyDesktopPanel.swift; sourceTree = "<group>"; };
+		B00100000000000000000012 /* WorldClocksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorldClocksView.swift; sourceTree = "<group>"; };
+		B00100000000000000000013 /* WorldClockDesktopPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorldClockDesktopPanel.swift; sourceTree = "<group>"; };
+		B00100000000000000000014 /* YearProgressDesktopPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YearProgressDesktopPanel.swift; sourceTree = "<group>"; };
+		B00100000000000000000015 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		B00200000000000000000001 /* DigitalWallWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DigitalWallWidget.swift; sourceTree = "<group>"; };
+		B00200000000000000000002 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		B00200000000000000000003 /* DigitalWallWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = DigitalWallWidget.entitlements; sourceTree = "<group>"; };
+		B00300000000000000000001 /* Digital Wall.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Digital Wall.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		B00300000000000000000002 /* DigitalWallWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = DigitalWallWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXContainerItemProxy section */
+		C00400000000000000000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C00000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D00200000000000000000001;
+			remoteInfo = DigitalWallWidget;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		E00100000000000000000003 /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				A00100000000000000000014 /* DigitalWallWidget.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		E00100000000000000000002 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E00200000000000000000002 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		F00000000000000000000001 = {
+			isa = PBXGroup;
+			children = (
+				F00100000000000000000001 /* DigitalWall */,
+				F00200000000000000000001 /* DigitalWallWidget */,
+				F00300000000000000000001 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		F00100000000000000000001 /* DigitalWall */ = {
+			isa = PBXGroup;
+			children = (
+				F00100000000000000000002 /* App */,
+				F00100000000000000000003 /* Shared */,
+				F00100000000000000000004 /* Features */,
+				B00100000000000000000015 /* Assets.xcassets */,
+				B0010000000000000000000C /* Info.plist */,
+				B0010000000000000000000D /* DigitalWall.entitlements */,
+			);
+			path = DigitalWall;
+			sourceTree = "<group>";
+		};
+		F00100000000000000000002 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				B00100000000000000000001 /* DigitalWallApp.swift */,
+				B00100000000000000000002 /* DashboardView.swift */,
+				B00100000000000000000003 /* WallStore.swift */,
+				B0010000000000000000000F /* DesktopPanelSupport.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		F00100000000000000000003 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				B00100000000000000000004 /* AppConfiguration.swift */,
+				B00100000000000000000005 /* WallState.swift */,
+				B00100000000000000000006 /* WallPersistence.swift */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		F00100000000000000000004 /* Features */ = {
+			isa = PBXGroup;
+			children = (
+				F00100000000000000000005 /* VisionBoard */,
+				F00100000000000000000006 /* Tracker */,
+				F00100000000000000000007 /* Phrases */,
+				F00100000000000000000008 /* Clocks */,
+			);
+			path = Features;
+			sourceTree = "<group>";
+		};
+		F00100000000000000000005 /* VisionBoard */ = {
+			isa = PBXGroup;
+			children = (
+				B00100000000000000000007 /* LocalImageView.swift */,
+				B00100000000000000000008 /* VisionBoardEditorView.swift */,
+				B00100000000000000000009 /* VisionBoardPresenter.swift */,
+				B00100000000000000000010 /* VisionBoardDesktopPanel.swift */,
+			);
+			path = VisionBoard;
+			sourceTree = "<group>";
+		};
+		F00100000000000000000006 /* Tracker */ = {
+			isa = PBXGroup;
+			children = (
+				B0010000000000000000000A /* YearTrackerView.swift */,
+				B00100000000000000000011 /* ConsistencyDesktopPanel.swift */,
+				B00100000000000000000014 /* YearProgressDesktopPanel.swift */,
+			);
+			path = Tracker;
+			sourceTree = "<group>";
+		};
+		F00100000000000000000007 /* Phrases */ = {
+			isa = PBXGroup;
+			children = (
+				B0010000000000000000000B /* PhrasesView.swift */,
+				B0010000000000000000000E /* PhraseDesktopPanel.swift */,
+			);
+			path = Phrases;
+			sourceTree = "<group>";
+		};
+		F00100000000000000000008 /* Clocks */ = {
+			isa = PBXGroup;
+			children = (
+				B00100000000000000000012 /* WorldClocksView.swift */,
+				B00100000000000000000013 /* WorldClockDesktopPanel.swift */,
+			);
+			path = Clocks;
+			sourceTree = "<group>";
+		};
+		F00200000000000000000001 /* DigitalWallWidget */ = {
+			isa = PBXGroup;
+			children = (
+				B00200000000000000000001 /* DigitalWallWidget.swift */,
+				B00200000000000000000002 /* Info.plist */,
+				B00200000000000000000003 /* DigitalWallWidget.entitlements */,
+			);
+			path = DigitalWallWidget;
+			sourceTree = "<group>";
+		};
+		F00300000000000000000001 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				B00300000000000000000001 /* Digital Wall.app */,
+				B00300000000000000000002 /* DigitalWallWidget.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		D00100000000000000000001 /* DigitalWall */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = G00100000000000000000001 /* Build configuration list for PBXNativeTarget "DigitalWall" */;
+			buildPhases = (
+				E00100000000000000000001 /* Sources */,
+				E00100000000000000000002 /* Frameworks */,
+				E00100000000000000000004 /* Resources */,
+				E00100000000000000000003 /* Embed App Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				C00500000000000000000001 /* PBXTargetDependency */,
+			);
+			name = DigitalWall;
+			productName = DigitalWall;
+			productReference = B00300000000000000000001 /* Digital Wall.app */;
+			productType = "com.apple.product-type.application";
+		};
+		D00200000000000000000001 /* DigitalWallWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = G00200000000000000000001 /* Build configuration list for PBXNativeTarget "DigitalWallWidget" */;
+			buildPhases = (
+				E00200000000000000000001 /* Sources */,
+				E00200000000000000000002 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = DigitalWallWidget;
+			productName = DigitalWallWidget;
+			productReference = B00300000000000000000002 /* DigitalWallWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		C00000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					D00100000000000000000001 = {
+						CreatedOnToolsVersion = 16.0;
+					};
+					D00200000000000000000001 = {
+						CreatedOnToolsVersion = 16.0;
+					};
+				};
+			};
+			buildConfigurationList = G00000000000000000000001 /* Build configuration list for PBXProject "DigitalWall" */;
+			compatibilityVersion = "Xcode 15.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = F00000000000000000000001;
+			productRefGroup = F00300000000000000000001 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				D00100000000000000000001 /* DigitalWall */,
+				D00200000000000000000001 /* DigitalWallWidget */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		E00100000000000000000004 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A00100000000000000000013 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		E00100000000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A00100000000000000000001 /* DigitalWallApp.swift in Sources */,
+				A00100000000000000000002 /* DashboardView.swift in Sources */,
+				A00100000000000000000003 /* WallStore.swift in Sources */,
+				A00100000000000000000004 /* AppConfiguration.swift in Sources */,
+				A00100000000000000000005 /* WallState.swift in Sources */,
+				A00100000000000000000006 /* WallPersistence.swift in Sources */,
+				A00100000000000000000007 /* LocalImageView.swift in Sources */,
+				A00100000000000000000008 /* VisionBoardEditorView.swift in Sources */,
+				A00100000000000000000009 /* VisionBoardPresenter.swift in Sources */,
+				A0010000000000000000000A /* YearTrackerView.swift in Sources */,
+				A0010000000000000000000B /* PhrasesView.swift in Sources */,
+				A0010000000000000000000C /* PhraseDesktopPanel.swift in Sources */,
+				A0010000000000000000000D /* DesktopPanelSupport.swift in Sources */,
+				A0010000000000000000000E /* VisionBoardDesktopPanel.swift in Sources */,
+				A0010000000000000000000F /* ConsistencyDesktopPanel.swift in Sources */,
+				A00100000000000000000010 /* WorldClocksView.swift in Sources */,
+				A00100000000000000000011 /* WorldClockDesktopPanel.swift in Sources */,
+				A00100000000000000000012 /* YearProgressDesktopPanel.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E00200000000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A00200000000000000000001 /* DigitalWallWidget.swift in Sources */,
+				A00200000000000000000002 /* AppConfiguration.swift in Sources */,
+				A00200000000000000000003 /* WallState.swift in Sources */,
+				A00200000000000000000004 /* WallPersistence.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		C00500000000000000000001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D00200000000000000000001 /* DigitalWallWidget */;
+			targetProxy = C00400000000000000000001 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		H00000000000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		H00000000000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		H00100000000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = DigitalWall/DigitalWall.entitlements;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 38;
+				DEVELOPMENT_TEAM = 2S64P663Y2;
+				ENABLE_APP_SANDBOX = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = DigitalWall/Info.plist;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.santileoni.DigitalWall;
+				PRODUCT_NAME = "Digital Wall";
+				REGISTER_APP_GROUPS = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+			};
+			name = Debug;
+		};
+		H00100000000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = DigitalWall/DigitalWall.entitlements;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 38;
+				DEVELOPMENT_TEAM = 2S64P663Y2;
+				ENABLE_APP_SANDBOX = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = DigitalWall/Info.plist;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.santileoni.DigitalWall;
+				PRODUCT_NAME = "Digital Wall";
+				REGISTER_APP_GROUPS = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+			};
+			name = Release;
+		};
+		H00200000000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = DigitalWallWidget/DigitalWallWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 38;
+				DEVELOPMENT_TEAM = 2S64P663Y2;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = DigitalWallWidget/Info.plist;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.santileoni.DigitalWall.Widget;
+				PRODUCT_NAME = DigitalWallWidget;
+				REGISTER_APP_GROUPS = YES;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+			};
+			name = Debug;
+		};
+		H00200000000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = DigitalWallWidget/DigitalWallWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 38;
+				DEVELOPMENT_TEAM = 2S64P663Y2;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = DigitalWallWidget/Info.plist;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.santileoni.DigitalWall.Widget;
+				PRODUCT_NAME = DigitalWallWidget;
+				REGISTER_APP_GROUPS = YES;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		G00000000000000000000001 /* Build configuration list for PBXProject "DigitalWall" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				H00000000000000000000001 /* Debug */,
+				H00000000000000000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		G00100000000000000000001 /* Build configuration list for PBXNativeTarget "DigitalWall" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				H00100000000000000000001 /* Debug */,
+				H00100000000000000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		G00200000000000000000001 /* Build configuration list for PBXNativeTarget "DigitalWallWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				H00200000000000000000001 /* Debug */,
+				H00200000000000000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = C00000000000000000000001 /* Project object */;
+}
