@@ -16,7 +16,7 @@ struct DesktopWidgetSnapResult {
 
 @MainActor
 enum DesktopPanelSupport {
-    static let minimumWidgetSpacing: CGFloat = 4
+    static let minimumWidgetSpacing: CGFloat = 8
 
     static func migratedFrame(
         currentSize: NSSize,
@@ -74,7 +74,9 @@ enum DesktopPanelSupport {
             backing: .buffered,
             defer: false
         )
-        panel.contentView = NSHostingView(rootView: content())
+        panel.contentView = NSHostingView(
+            rootView: content().ignoresSafeArea(edges: .top)
+        )
         panel.level = NSWindow.Level(
             rawValue: Int(CGWindowLevelForKey(.desktopIconWindow)) + 1
         )
@@ -100,7 +102,7 @@ enum DesktopPanelSupport {
         _ proposedFrame: NSRect,
         avoiding occupiedFrames: [NSRect],
         within visibleFrame: NSRect,
-        spacing: CGFloat = 4
+        spacing: CGFloat = 8
     ) -> NSRect {
         guard !occupiedFrames.isEmpty else {
             return clampedFrame(proposedFrame, within: visibleFrame)
@@ -171,7 +173,7 @@ enum DesktopPanelSupport {
         from previousFrame: NSRect,
         avoiding occupiedFrames: [NSRect],
         within visibleFrame: NSRect,
-        spacing: CGFloat = 4
+        spacing: CGFloat = 8
     ) -> NSRect {
         let exclusionFrames = occupiedFrames.map {
             $0.insetBy(dx: -spacing, dy: -spacing)
@@ -251,7 +253,7 @@ enum DesktopPanelSupport {
         _ proposedFrame: NSRect,
         to occupiedFrames: [NSRect],
         within visibleFrame: NSRect,
-        spacing: CGFloat = 4,
+        spacing: CGFloat = 8,
         threshold: CGFloat = 5
     ) -> DesktopWidgetSnapResult {
         var horizontalCandidates: [(origin: CGFloat, guide: CGFloat)] = [
@@ -337,7 +339,7 @@ enum DesktopPanelSupport {
         from previousFrame: NSRect,
         avoiding occupiedFrames: [NSRect],
         minimumSize: NSSize,
-        spacing: CGFloat = 4
+        spacing: CGFloat = 8
     ) -> NSRect {
         let exclusionFrames = occupiedFrames.map {
             $0.insetBy(dx: -spacing, dy: -spacing)
@@ -388,7 +390,7 @@ enum DesktopPanelSupport {
         to occupiedFrames: [NSRect],
         within visibleFrame: NSRect,
         minimumSize: NSSize,
-        spacing: CGFloat = 4,
+        spacing: CGFloat = 8,
         threshold: CGFloat = 5
     ) -> DesktopWidgetSnapResult {
         let activeEdges = resizedEdges(from: previousFrame, to: proposedFrame)

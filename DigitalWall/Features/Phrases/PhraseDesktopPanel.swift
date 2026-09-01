@@ -124,7 +124,6 @@ private struct PhraseDesktopPanelContent: View {
                         .scrollContentBackground(.hidden)
                         .focused($editorFocused)
                         .padding(18)
-                        .ignoresSafeArea(edges: .top)
                 } else {
                     ScrollView {
                         DesktopPhraseMarkdownView(markdown: phraseMarkdown)
@@ -132,7 +131,6 @@ private struct PhraseDesktopPanelContent: View {
                             .padding(18)
                     }
                     .scrollIndicators(.hidden)
-                    .ignoresSafeArea(edges: .top)
                 }
             }
 
@@ -162,7 +160,6 @@ private struct PhraseDesktopPanelContent: View {
                 }
             }
             .padding(12)
-            .ignoresSafeArea(edges: .top)
         }
         .onHover { controlsVisible = $0 }
         .onExitCommand {

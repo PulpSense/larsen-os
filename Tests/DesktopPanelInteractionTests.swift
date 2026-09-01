@@ -60,7 +60,7 @@ struct DesktopPanelInteractionTests {
         let liveBarrier = DesktopPanelSupport.constrainedFrame(
             NSRect(x: 150, y: 0, width: 100, height: 100),
             from: NSRect(x: 0, y: 0, width: 100, height: 100),
-            avoiding: [NSRect(x: 104, y: 0, width: 100, height: 100)],
+            avoiding: [NSRect(x: 108, y: 0, width: 100, height: 100)],
             within: NSRect(x: 0, y: 0, width: 500, height: 500)
         )
         precondition(
@@ -71,7 +71,7 @@ struct DesktopPanelInteractionTests {
         let aroundTheEdge = DesktopPanelSupport.constrainedFrame(
             NSRect(x: 150, y: 120, width: 100, height: 100),
             from: NSRect(x: 0, y: 0, width: 100, height: 100),
-            avoiding: [NSRect(x: 104, y: 0, width: 100, height: 100)],
+            avoiding: [NSRect(x: 108, y: 0, width: 100, height: 100)],
             within: NSRect(x: 0, y: 0, width: 500, height: 500)
         )
         precondition(
@@ -85,7 +85,7 @@ struct DesktopPanelInteractionTests {
             within: NSRect(x: 0, y: 0, width: 500, height: 500)
         )
         precondition(
-            moveSnap.frame.minX == 96,
+            moveSnap.frame.minX == 92,
             "Positioning near another widget should snap to the shared gap"
         )
         precondition(moveSnap.verticalGuide != nil, "A position snap should provide a guide")
@@ -93,7 +93,7 @@ struct DesktopPanelInteractionTests {
         let resizeSnap = DesktopPanelSupport.snappedResizeFrame(
             NSRect(x: 0, y: 0, width: 196, height: 100),
             from: NSRect(x: 0, y: 0, width: 100, height: 100),
-            to: [NSRect(x: 204, y: 0, width: 100, height: 100)],
+            to: [NSRect(x: 208, y: 0, width: 100, height: 100)],
             within: NSRect(x: 0, y: 0, width: 500, height: 500),
             minimumSize: NSSize(width: 80, height: 80)
         )
