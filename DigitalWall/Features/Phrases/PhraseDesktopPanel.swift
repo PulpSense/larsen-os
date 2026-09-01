@@ -123,17 +123,18 @@ private struct PhraseDesktopPanelContent: View {
                         .font(.system(.body, design: .monospaced))
                         .scrollContentBackground(.hidden)
                         .focused($editorFocused)
-                        .padding(20)
+                        .padding(18)
+                        .ignoresSafeArea(edges: .top)
                 } else {
                     ScrollView {
                         DesktopPhraseMarkdownView(markdown: phraseMarkdown)
                             .frame(maxWidth: .infinity, alignment: .topLeading)
-                            .padding(26)
+                            .padding(18)
                     }
                     .scrollIndicators(.hidden)
+                    .ignoresSafeArea(edges: .top)
                 }
             }
-            .padding(.top, isEditing ? 26 : 0)
 
             Group {
                 if isEditing {
@@ -161,6 +162,7 @@ private struct PhraseDesktopPanelContent: View {
                 }
             }
             .padding(12)
+            .ignoresSafeArea(edges: .top)
         }
         .onHover { controlsVisible = $0 }
         .onExitCommand {
@@ -191,7 +193,7 @@ private struct DesktopPhraseMarkdownView: View {
                 blockView(block)
             }
         }
-        .textSelection(.enabled)
+        .textSelection(.disabled)
     }
 
     @ViewBuilder

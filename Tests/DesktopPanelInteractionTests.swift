@@ -35,6 +35,74 @@ struct DesktopPanelInteractionTests {
         )
         precondition(recovered.minX >= 0 && recovered.minY >= 0, "An off-screen panel should be recovered into the visible frame")
 
-        print("PASS: desktop-panel drag behavior follows edit mode")
+        let occupiedFrame = NSRect(x: 90, y: 0, width: 100, height: 100)
+        let spaced = DesktopPanelSupport.spacedFrame(
+            NSRect(x: 80, y: 0, width: 100, height: 100),
+            avoiding: [occupiedFrame],
+            within: NSRect(x: 0, y: 0, width: 500, height: 500)
+        )
+        let occupiedExclusion = occupiedFrame.insetBy(
+            dx: -DesktopPanelSupport.minimumWidgetSpacing,
+            dy: -DesktopPanelSupport.minimumWidgetSpacing
+        )
+        precondition(
+            !spaced.intersects(occupiedExclusion),
+            "Overlapping widgets should settle with the minimum gap"
+        )
+
+        let alreadySpaced = DesktopPanelSupport.spacedFrame(
+            spaced,
+            avoiding: [occupiedFrame],
+            within: NSRect(x: 0, y: 0, width: 500, height: 500)
+        )
+        precondition(alreadySpaced == spaced, "A correctly spaced widget should not move")
+
+        let liveBarrier = DesktopPanelSupport.constrainedFrame(
+            NSRect(x: 150, y: 0, width: 100, height: 100),
+            from: NSRect(x: 0, y: 0, width: 100, height: 100),
+            avoiding: [NSRect(x: 104, y: 0, width: 100, height: 100)],
+            within: NSRect(x: 0, y: 0, width: 500, height: 500)
+        )
+        precondition(
+            liveBarrier.maxX == 100,
+            "A dragged widget should stop at the gap instead of passing through"
+        )
+
+        let aroundTheEdge = DesktopPanelSupport.constrainedFrame(
+            NSRect(x: 150, y: 120, width: 100, height: 100),
+            from: NSRect(x: 0, y: 0, width: 100, height: 100),
+            avoiding: [NSRect(x: 104, y: 0, width: 100, height: 100)],
+            within: NSRect(x: 0, y: 0, width: 500, height: 500)
+        )
+        precondition(
+            aroundTheEdge.origin == NSPoint(x: 150, y: 120),
+            "A widget should still be able to move around another widget's edge"
+        )
+
+        let moveSnap = DesktopPanelSupport.snappedFrame(
+            NSRect(x: 94, y: 0, width: 100, height: 100),
+            to: [NSRect(x: 200, y: 0, width: 100, height: 100)],
+            within: NSRect(x: 0, y: 0, width: 500, height: 500)
+        )
+        precondition(
+            moveSnap.frame.minX == 96,
+            "Positioning near another widget should snap to the shared gap"
+        )
+        precondition(moveSnap.verticalGuide != nil, "A position snap should provide a guide")
+
+        let resizeSnap = DesktopPanelSupport.snappedResizeFrame(
+            NSRect(x: 0, y: 0, width: 196, height: 100),
+            from: NSRect(x: 0, y: 0, width: 100, height: 100),
+            to: [NSRect(x: 204, y: 0, width: 100, height: 100)],
+            within: NSRect(x: 0, y: 0, width: 500, height: 500),
+            minimumSize: NSSize(width: 80, height: 80)
+        )
+        precondition(
+            resizeSnap.frame.maxX == 200,
+            "Resizing near another widget should snap to the shared gap"
+        )
+        precondition(resizeSnap.verticalGuide != nil, "A resize snap should provide a guide")
+
+        print("PASS: desktop-widget interaction and spacing behavior")
     }
 }
