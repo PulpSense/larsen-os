@@ -3,7 +3,7 @@
 set -eu
 
 support_file="DigitalWall/App/DesktopPanelSupport.swift"
-expected='rootView: content().ignoresSafeArea(edges: .top)'
+expected='let rootView = content().ignoresSafeArea(edges: .top)'
 
 if ! grep -Fq "$expected" "$support_file"; then
     echo "FAIL: the shared desktop widget root still honors the hidden title-bar safe area"

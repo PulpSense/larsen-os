@@ -1,4 +1,5 @@
 import AppKit
+import SwiftUI
 
 @main
 struct DesktopPanelInteractionTests {
@@ -19,6 +20,20 @@ struct DesktopPanelInteractionTests {
 
         panel.setContentEditing(false)
         precondition(panel.isMovableByWindowBackground, "Leaving edit mode should restore panel dragging")
+
+        let clickThroughPanel = DesktopPanelSupport.makePanel(
+            initialSize: NSSize(width: 200, height: 120),
+            minimumSize: NSSize(width: 100, height: 80),
+            frameAutosaveName: "DigitalWallClickThroughTest",
+            acceptsFirstClick: true
+        ) {
+            Color.clear
+        }
+        precondition(
+            clickThroughPanel.contentView?.acceptsFirstMouse(for: nil) == true,
+            "An opted-in desktop widget must handle its first click while inactive"
+        )
+        clickThroughPanel.close()
 
         let migrated = DesktopPanelSupport.migratedFrame(
             currentSize: NSSize(width: 680, height: 170),

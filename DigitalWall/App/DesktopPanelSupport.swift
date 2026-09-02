@@ -41,6 +41,7 @@ enum DesktopPanelSupport {
         frameAutosaveName: String,
         defaultAnchor: DesktopPanelAnchor = .topRight,
         defaultOffset: NSPoint = NSPoint(x: 36, y: 36),
+        acceptsFirstClick: Bool = false,
         @ViewBuilder content: () -> Content
     ) -> DesktopWallPanel {
         let screen = screenUnderPointer() ?? NSScreen.main
@@ -74,9 +75,12 @@ enum DesktopPanelSupport {
             backing: .buffered,
             defer: false
         )
-        panel.contentView = NSHostingView(
-            rootView: content().ignoresSafeArea(edges: .top)
-        )
+        let rootView = content().ignoresSafeArea(edges: .top)
+        if acceptsFirstClick {
+            panel.contentView = FirstClickHostingView(rootView: rootView)
+        } else {
+            panel.contentView = NSHostingView(rootView: rootView)
+        }
         panel.level = NSWindow.Level(
             rawValue: Int(CGWindowLevelForKey(.desktopIconWindow)) + 1
         )
@@ -831,6 +835,12 @@ final class DesktopWallPanel: NSPanel {
 
     func setContentEditing(_ isEditing: Bool) {
         isMovableByWindowBackground = !isEditing
+    }
+}
+
+private final class FirstClickHostingView<Content: View>: NSHostingView<Content> {
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
+        true
     }
 }
 

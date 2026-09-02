@@ -62,7 +62,8 @@ final class VisionBoardDesktopPanelController {
             defaultOffset: NSPoint(
                 x: 36 + CGFloat(index % 5) * 38,
                 y: 510 + CGFloat(index % 5) * 38
-            )
+            ),
+            acceptsFirstClick: true
         ) {
             VisionBoardDesktopPanelContent(
                 store: store,
