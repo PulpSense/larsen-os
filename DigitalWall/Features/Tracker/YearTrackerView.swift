@@ -250,8 +250,11 @@ struct YearTrackerView: View {
     }
 
     private func addHour(on date: Date) {
-        guard store.addDeepWorkHour(on: date) else { return }
+        _ = store.addDeepWorkHour(on: date)
+        let hours = store.deepWorkHours(on: date)
+        guard hours >= DeepWork.dailyGoalHours else { return }
         DeepWorkCelebrationPresenter.shared.present(
+            hours: hours,
             streak: currentStreak,
             hideApplicationOnDismiss: false
         )

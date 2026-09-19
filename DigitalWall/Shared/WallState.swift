@@ -268,6 +268,38 @@ enum DeepWork {
     }
 }
 
+enum DeepWorkCelebrationMilestone: Equatable {
+    case dayWon
+    case bonusHour
+    case momentum
+    case unstoppable
+    case doubleGoal
+    case keepBuilding
+
+    static func forHours(_ hours: Int) -> DeepWorkCelebrationMilestone? {
+        switch hours {
+        case 4: .dayWon
+        case 5: .bonusHour
+        case 6: .momentum
+        case 7: .unstoppable
+        case 8: .doubleGoal
+        case 9...: .keepBuilding
+        default: nil
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .dayWon: "DAY WON"
+        case .bonusHour: "BONUS HOUR"
+        case .momentum: "MOMENTUM"
+        case .unstoppable: "UNSTOPPABLE"
+        case .doubleGoal: "2× GOAL"
+        case .keepBuilding: "KEEP BUILDING"
+        }
+    }
+}
+
 enum ConsistencyStreak {
     static func current(
         completedDays: Set<String>,

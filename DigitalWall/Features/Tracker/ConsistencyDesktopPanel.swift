@@ -135,8 +135,11 @@ private struct ConsistencyDesktopPanelContent: View {
     }
 
     private func addHour(now: Date) {
-        guard store.addDeepWorkHour(on: now) else { return }
+        _ = store.addDeepWorkHour(on: now)
+        let hours = store.deepWorkHours(on: now)
+        guard hours >= DeepWork.dailyGoalHours else { return }
         DeepWorkCelebrationPresenter.shared.present(
+            hours: hours,
             streak: currentStreak(now: now),
             hideApplicationOnDismiss: false
         )

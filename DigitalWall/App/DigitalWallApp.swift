@@ -27,16 +27,18 @@ struct DigitalWallApp: App {
                         VisionBoardDesktopPanelController.shared.present(store: store)
                     case "show-consistency-panel":
                         ConsistencyDesktopPanelController.shared.present(store: store)
-                    case "win-deep-work-day":
+                    case "log-deep-work-hour", "win-deep-work-day":
                         store.reloadFromDisk()
-                        let becameWon = store.addDeepWorkHour(on: Date())
-                        if becameWon {
+                        _ = store.addDeepWorkHour(on: Date())
+                        let hours = store.deepWorkHours(on: Date())
+                        if hours >= DeepWork.dailyGoalHours {
                             let streak = ConsistencyStreak.current(
                                 completedDays: store.completedDays,
                                 through: Date(),
                                 calendar: TrackerCalendar.calendar
                             )
                             DeepWorkCelebrationPresenter.shared.present(
+                                hours: hours,
                                 streak: streak,
                                 hideApplicationOnDismiss: true
                             )

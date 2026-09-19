@@ -167,12 +167,14 @@ struct ConsistencyWidgetView: View {
                         .contentTransition(.numericText())
                 }
                 Spacer()
-                if todayHours == DeepWork.dailyGoalHours - 1 {
-                    Link(destination: winDayURL) {
+                if todayHours >= DeepWork.dailyGoalHours - 1 {
+                    Link(destination: logHourURL) {
                         hourButtonLabel
                     }
                     .buttonStyle(.plain)
-                    .help("Log the winning fourth hour")
+                    .help(todayHours == DeepWork.dailyGoalHours - 1
+                        ? "Log the winning fourth hour"
+                        : "Log and celebrate another deep work hour")
                 } else {
                     Button(intent: AddDeepWorkHourIntent()) {
                         hourButtonLabel
@@ -213,8 +215,8 @@ struct ConsistencyWidgetView: View {
         DeepWork.hours(on: entry.date, in: entry.state.deepWorkHours)
     }
 
-    private var winDayURL: URL {
-        URL(string: "\(AppConfiguration.urlScheme)://win-deep-work-day")!
+    private var logHourURL: URL {
+        URL(string: "\(AppConfiguration.urlScheme)://log-deep-work-hour")!
     }
 
     private var hourButtonLabel: some View {

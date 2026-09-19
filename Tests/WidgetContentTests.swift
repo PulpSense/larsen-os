@@ -117,6 +117,20 @@ enum WidgetContentTests {
             "Deep-work hours must survive a persistence round trip."
         )
 
+        precondition(
+            DeepWorkCelebrationMilestone.forHours(3) == nil,
+            "Hours below the goal must not trigger a full-screen celebration."
+        )
+        precondition(
+            DeepWorkCelebrationMilestone.forHours(4) == .dayWon
+                && DeepWorkCelebrationMilestone.forHours(5) == .bonusHour
+                && DeepWorkCelebrationMilestone.forHours(6) == .momentum
+                && DeepWorkCelebrationMilestone.forHours(7) == .unstoppable
+                && DeepWorkCelebrationMilestone.forHours(8) == .doubleGoal
+                && DeepWorkCelebrationMilestone.forHours(12) == .keepBuilding,
+            "Every post-goal hour must map to the intended escalating celebration."
+        )
+
         let legacyData = Data(#"{"completedDays":["2026-08-31"],"phrasesMarkdown":"Keep going."}"#.utf8)
         let migratedLegacyState = try! JSONDecoder().decode(WallState.self, from: legacyData)
         precondition(

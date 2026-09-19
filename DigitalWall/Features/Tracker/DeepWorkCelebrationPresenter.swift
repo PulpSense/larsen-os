@@ -12,8 +12,10 @@ final class DeepWorkCelebrationPresenter {
 
     private init() {}
 
-    func present(streak: Int, hideApplicationOnDismiss: Bool) {
+    func present(hours: Int, streak: Int, hideApplicationOnDismiss: Bool) {
         dismiss(hideApplication: false)
+
+        guard let milestone = DeepWorkCelebrationMilestone.forHours(hours) else { return }
 
         let screen = screenUnderPointer() ?? NSScreen.main
         guard let screen else { return }
@@ -24,9 +26,18 @@ final class DeepWorkCelebrationPresenter {
             backing: .buffered,
             defer: false
         )
-        panel.contentView = NSHostingView(rootView: DeepWorkCelebrationView(streak: streak) {
-            DeepWorkCelebrationPresenter.shared.dismiss()
-        })
+        let dismiss = { DeepWorkCelebrationPresenter.shared.dismiss() }
+        let celebration: AnyView
+        if milestone == .dayWon {
+            celebration = AnyView(DayWonCelebrationView(streak: streak, dismiss: dismiss))
+        } else {
+            celebration = AnyView(BonusHourCelebrationView(
+                hours: hours,
+                milestone: milestone,
+                dismiss: dismiss
+            ))
+        }
+        panel.contentView = NSHostingView(rootView: celebration)
         panel.level = .screenSaver
         panel.backgroundColor = .clear
         panel.isOpaque = false
@@ -47,7 +58,7 @@ final class DeepWorkCelebrationPresenter {
         }
 
         dismissalTask = Task { [weak self] in
-            try? await Task.sleep(for: .seconds(5.8))
+            try? await Task.sleep(for: .seconds(milestone == .dayWon ? 5.8 : 3.0))
             guard !Task.isCancelled else { return }
             self?.dismiss()
         }
@@ -86,7 +97,7 @@ private final class CelebrationPanel: NSPanel {
     override var canBecomeMain: Bool { false }
 }
 
-private struct DeepWorkCelebrationView: View {
+private struct DayWonCelebrationView: View {
     let streak: Int
     let dismiss: () -> Void
 
@@ -277,6 +288,248 @@ private struct DeepWorkCelebrationView: View {
 
         try? await Task.sleep(for: .milliseconds(reduceMotion ? 10 : 2_650))
         withAnimation(.easeInOut(duration: reduceMotion ? 0.01 : 0.58)) {
+            fading = true
+        }
+    }
+}
+
+private struct BonusHourCelebrationView: View {
+    let hours: Int
+    let milestone: DeepWorkCelebrationMilestone
+    let dismiss: () -> Void
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var entered = false
+    @State private var effectActive = false
+    @State private var fading = false
+
+    private var accent: Color { DeepWorkVisuals.earnedColor(for: hours) }
+
+    private var detail: String {
+        switch milestone {
+        case .bonusHour: "Every hour beyond four makes you stronger."
+        case .momentum: "Extra hours compound."
+        case .unstoppable: "Discipline today. A brighter tomorrow."
+        case .doubleGoal: "Twice the target."
+        case .keepBuilding: "No limits. More focus."
+        case .dayWon: ""
+        }
+    }
+
+    private var particleCount: Int {
+        switch milestone {
+        case .bonusHour: 12
+        case .momentum: 20
+        case .unstoppable: 26
+        case .doubleGoal: 42
+        case .keepBuilding: min(52, 26 + max(0, hours - 9) * 4)
+        case .dayWon: 0
+        }
+    }
+
+    var body: some View {
+        GeometryReader { proxy in
+            let shortestSide = min(proxy.size.width, proxy.size.height)
+            let effectSize = min(660, shortestSide * 0.72)
+            let contentScale = min(
+                1.7,
+                max(1, min(proxy.size.width / 1_600, proxy.size.height / 900))
+            )
+
+            ZStack {
+                LinearGradient(
+                    colors: [
+                        .black.opacity(0.90),
+                        accent.opacity(0.27),
+                        Color.digitalWallFlame.opacity(milestone == .keepBuilding ? 0.22 : 0.08),
+                        .black.opacity(0.94)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+
+                RadialGradient(
+                    colors: [accent.opacity(effectActive ? 0.44 : 0.10), .clear],
+                    center: .center,
+                    startRadius: 10,
+                    endRadius: shortestSide * 0.58
+                )
+                .scaleEffect(effectActive ? 1.18 : 0.48)
+
+                milestoneEffect(size: effectSize)
+
+                ForEach(0..<particleCount, id: \.self) { index in
+                    let angle = Double(index) / Double(max(1, particleCount)) * Double.pi * 2
+                    let distance = effectSize * (0.28 + CGFloat((index * 37) % 31) / 100)
+                    Circle()
+                        .fill(index.isMultiple(of: 4) ? Color.digitalWallFlame : accent)
+                        .frame(width: CGFloat(4 + (index * 7) % 8), height: CGFloat(4 + (index * 7) % 8))
+                        .shadow(color: accent.opacity(0.85), radius: 7)
+                        .offset(
+                            x: effectActive ? CGFloat(cos(angle)) * distance : 0,
+                            y: effectActive ? CGFloat(sin(angle)) * distance * 0.68 : 0
+                        )
+                        .opacity(effectActive ? 0 : 0.95)
+                        .animation(
+                            .easeOut(duration: reduceMotion ? 0.01 : 0.85 + Double(index % 5) * 0.08)
+                                .delay(reduceMotion ? 0 : Double(index % 7) * 0.025),
+                            value: effectActive
+                        )
+                }
+
+                VStack(spacing: 12) {
+                    Image(systemName: "flame.fill")
+                        .font(.system(size: 76, weight: .black))
+                        .foregroundStyle(Color.digitalWallFlame)
+                        .frame(width: 154, height: 154)
+                        .background(.black.opacity(0.62), in: RoundedRectangle(cornerRadius: 38, style: .continuous))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 38, style: .continuous)
+                                .stroke(accent.opacity(0.65), lineWidth: 2)
+                        }
+                        .shadow(color: accent.opacity(0.72), radius: 34)
+                        .symbolEffect(.bounce, value: entered)
+
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text("\(hours)")
+                            .font(.system(size: 106, weight: .black, design: .rounded))
+                            .monospacedDigit()
+                        Text("H")
+                            .font(.system(size: 50, weight: .black, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.72))
+                    }
+
+                    Text(milestone.title)
+                        .font(.system(size: 32, weight: .black, design: .rounded))
+                        .tracking(2.2)
+                        .foregroundStyle(accent)
+                        .shadow(color: accent.opacity(0.65), radius: 20)
+
+                    Text(detail)
+                        .font(.system(size: 18, weight: .medium, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.72))
+
+                    if milestone == .keepBuilding {
+                        progressPips
+                            .padding(.top, 8)
+                    }
+                }
+                .multilineTextAlignment(.center)
+                .foregroundStyle(.white)
+                .scaleEffect(contentScale * (entered ? 1 : 0.62))
+                .opacity(entered && !fading ? 1 : 0)
+            }
+            .contentShape(Rectangle())
+            .onTapGesture(perform: dismiss)
+        }
+        .ignoresSafeArea()
+        .task { await runSequence() }
+    }
+
+    @ViewBuilder
+    private func milestoneEffect(size: CGFloat) -> some View {
+        switch milestone {
+        case .bonusHour:
+            orbitTrails(count: 1, size: size)
+        case .momentum:
+            orbitTrails(count: 2, size: size)
+        case .unstoppable:
+            ZStack {
+                ForEach(0..<3, id: \.self) { ring in
+                    Circle()
+                        .stroke(accent.opacity(0.72 - Double(ring) * 0.16), lineWidth: CGFloat(5 - ring))
+                        .frame(width: size * (0.42 + CGFloat(ring) * 0.18))
+                        .scaleEffect(effectActive ? 1.35 : 0.38)
+                        .opacity(effectActive ? 0 : 0.9)
+                        .animation(
+                            .easeOut(duration: reduceMotion ? 0.01 : 1.0)
+                                .delay(reduceMotion ? 0 : Double(ring) * 0.10),
+                            value: effectActive
+                        )
+                }
+            }
+        case .doubleGoal:
+            ZStack {
+                ForEach(0..<20, id: \.self) { ray in
+                    Capsule()
+                        .fill(ray.isMultiple(of: 3) ? Color.digitalWallFlame : accent)
+                        .frame(width: effectActive ? size * 0.18 : size * 0.04, height: 7)
+                        .offset(x: effectActive ? size * 0.42 : size * 0.18)
+                        .rotationEffect(.degrees(Double(ray) * 18))
+                        .opacity(effectActive ? 0 : 0.92)
+                        .animation(
+                            .easeOut(duration: reduceMotion ? 0.01 : 0.82)
+                                .delay(reduceMotion ? 0 : Double(ray % 4) * 0.025),
+                            value: effectActive
+                        )
+                }
+            }
+        case .keepBuilding:
+            orbitTrails(count: 3, size: size)
+        case .dayWon:
+            EmptyView()
+        }
+    }
+
+    private func orbitTrails(count: Int, size: CGFloat) -> some View {
+        ZStack {
+            ForEach(0..<count, id: \.self) { orbit in
+                Circle()
+                    .trim(from: 0.04, to: 0.36)
+                    .stroke(
+                        AngularGradient(
+                            colors: [.clear, accent.opacity(0.45), .white, accent],
+                            center: .center
+                        ),
+                        style: StrokeStyle(lineWidth: 8, lineCap: .round)
+                    )
+                    .frame(
+                        width: size * (0.62 + CGFloat(orbit) * 0.13),
+                        height: size * (0.62 + CGFloat(orbit) * 0.13)
+                    )
+                    .rotationEffect(.degrees(
+                        effectActive
+                            ? 300 + Double(orbit) * 150
+                            : -80 + Double(orbit) * 150
+                    ))
+                    .shadow(color: accent.opacity(0.88), radius: 12)
+                    .animation(
+                        .easeOut(duration: reduceMotion ? 0.01 : 1.25 - Double(orbit) * 0.12),
+                        value: effectActive
+                    )
+            }
+        }
+    }
+
+    private var progressPips: some View {
+        HStack(spacing: 12) {
+            ForEach(0..<7, id: \.self) { index in
+                Circle()
+                    .fill(index < min(7, max(1, hours - 8)) ? accent : .clear)
+                    .frame(width: 11, height: 11)
+                    .overlay {
+                        Circle().stroke(accent.opacity(0.7), lineWidth: 1.5)
+                    }
+                    .shadow(color: accent.opacity(0.75), radius: 6)
+            }
+        }
+    }
+
+    @MainActor
+    private func runSequence() async {
+        withAnimation(
+            reduceMotion
+                ? .easeOut(duration: 0.01)
+                : .spring(response: 0.48, dampingFraction: 0.62)
+        ) {
+            entered = true
+        }
+
+        try? await Task.sleep(for: .milliseconds(reduceMotion ? 1 : 90))
+        effectActive = true
+
+        try? await Task.sleep(for: .milliseconds(reduceMotion ? 20 : 2_050))
+        withAnimation(.easeInOut(duration: reduceMotion ? 0.01 : 0.42)) {
             fading = true
         }
     }
