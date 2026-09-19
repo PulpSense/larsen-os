@@ -86,7 +86,7 @@ struct WallState: Codable, Sendable {
     var visionBoardPrivacyEnabled: Bool
     var visionBoardPrivacyMessage: String
     var folders: [VisionFolder]
-    var completedDays: Set<String>
+    var deepWorkHours: [String: Int]
     var phrasesMarkdown: String
     var desktopPhrases: [DesktopPhrase]
     var worldClocks: [WorldClock]
@@ -98,6 +98,7 @@ struct WallState: Codable, Sendable {
         visionBoardPrivacyMessage: String = "Private vision board",
         folders: [VisionFolder] = [],
         completedDays: Set<String>,
+        deepWorkHours: [String: Int]? = nil,
         phrasesMarkdown: String,
         desktopPhrases: [DesktopPhrase]? = nil,
         worldClocks: [WorldClock] = WallState.starterWorldClocks
@@ -113,7 +114,11 @@ struct WallState: Codable, Sendable {
         self.visionBoardPrivacyEnabled = visionBoardPrivacyEnabled
         self.visionBoardPrivacyMessage = visionBoardPrivacyMessage
         self.folders = folders
-        self.completedDays = completedDays
+        self.deepWorkHours = Self.sanitizedDeepWorkHours(
+            deepWorkHours ?? Dictionary(uniqueKeysWithValues: completedDays.map {
+                ($0, DeepWork.dailyGoalHours)
+            })
+        )
         self.phrasesMarkdown = phrasesMarkdown
         self.desktopPhrases = desktopPhrases ?? [
             DesktopPhrase(id: DesktopPhrase.primaryID, markdown: phrasesMarkdown)
@@ -123,7 +128,7 @@ struct WallState: Codable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case images, visionBoards, visionBoardPrivacyEnabled, visionBoardPrivacyMessage
-        case folders, completedDays, phrasesMarkdown, desktopPhrases, worldClocks
+        case folders, completedDays, deepWorkHours, phrasesMarkdown, desktopPhrases, worldClocks
     }
 
     init(from decoder: Decoder) throws {
@@ -148,7 +153,14 @@ struct WallState: Codable, Sendable {
             forKey: .visionBoardPrivacyMessage
         ) ?? "Private vision board"
         folders = try container.decodeIfPresent([VisionFolder].self, forKey: .folders) ?? []
-        completedDays = try container.decodeIfPresent(Set<String>.self, forKey: .completedDays) ?? []
+        if let savedHours = try container.decodeIfPresent([String: Int].self, forKey: .deepWorkHours) {
+            deepWorkHours = Self.sanitizedDeepWorkHours(savedHours)
+        } else {
+            let completedDays = try container.decodeIfPresent(Set<String>.self, forKey: .completedDays) ?? []
+            deepWorkHours = Dictionary(uniqueKeysWithValues: completedDays.map {
+                ($0, DeepWork.dailyGoalHours)
+            })
+        }
         phrasesMarkdown = try container.decodeIfPresent(String.self, forKey: .phrasesMarkdown) ?? Self.starterPhrases
         desktopPhrases = try container.decodeIfPresent([DesktopPhrase].self, forKey: .desktopPhrases) ?? [
             DesktopPhrase(id: DesktopPhrase.primaryID, markdown: phrasesMarkdown)
@@ -158,6 +170,32 @@ struct WallState: Codable, Sendable {
         }
         phrasesMarkdown = desktopPhrases[0].markdown
         worldClocks = try container.decodeIfPresent([WorldClock].self, forKey: .worldClocks) ?? Self.starterWorldClocks
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(images, forKey: .images)
+        try container.encode(visionBoards, forKey: .visionBoards)
+        try container.encode(visionBoardPrivacyEnabled, forKey: .visionBoardPrivacyEnabled)
+        try container.encode(visionBoardPrivacyMessage, forKey: .visionBoardPrivacyMessage)
+        try container.encode(folders, forKey: .folders)
+        try container.encode(completedDays, forKey: .completedDays)
+        try container.encode(deepWorkHours, forKey: .deepWorkHours)
+        try container.encode(phrasesMarkdown, forKey: .phrasesMarkdown)
+        try container.encode(desktopPhrases, forKey: .desktopPhrases)
+        try container.encode(worldClocks, forKey: .worldClocks)
+    }
+
+    var completedDays: Set<String> {
+        Set(deepWorkHours.compactMap { day, hours in
+            hours >= DeepWork.dailyGoalHours ? day : nil
+        })
+    }
+
+    private static func sanitizedDeepWorkHours(_ hours: [String: Int]) -> [String: Int] {
+        hours.reduce(into: [:]) { result, entry in
+            if entry.value > 0 { result[entry.key] = entry.value }
+        }
     }
 
     static let starterPhrases = """
@@ -197,6 +235,36 @@ enum DayKey {
 
     static func string(from date: Date) -> String {
         formatter.string(from: date)
+    }
+}
+
+enum DeepWork {
+    static let dailyGoalHours = 4
+
+    static func hours(on date: Date, in hoursByDay: [String: Int]) -> Int {
+        hoursByDay[DayKey.string(from: date), default: 0]
+    }
+
+    static func isWon(_ date: Date, in hoursByDay: [String: Int]) -> Bool {
+        hours(on: date, in: hoursByDay) >= dailyGoalHours
+    }
+
+    static func addingHour(on date: Date, to state: WallState) -> WallState {
+        var updated = state
+        let key = DayKey.string(from: date)
+        updated.deepWorkHours[key, default: 0] += 1
+        return updated
+    }
+
+    static func settingHours(_ hours: Int, on date: Date, in state: WallState) -> WallState {
+        var updated = state
+        let key = DayKey.string(from: date)
+        if hours > 0 {
+            updated.deepWorkHours[key] = hours
+        } else {
+            updated.deepWorkHours.removeValue(forKey: key)
+        }
+        return updated
     }
 }
 
@@ -256,14 +324,13 @@ enum WidgetContent {
         state.images
     }
 
-    static func toggling(_ date: Date, in state: WallState) -> WallState {
-        var updated = state
-        let key = DayKey.string(from: date)
-        if updated.completedDays.contains(key) {
-            updated.completedDays.remove(key)
-        } else {
-            updated.completedDays.insert(key)
-        }
-        return updated
+    static func addingDeepWorkHour(_ date: Date, in state: WallState) -> WallState {
+        DeepWork.addingHour(on: date, to: state)
+    }
+}
+
+enum VisionBoardPresentation {
+    static func imagesForExpandedView<Image>(_ images: [Image]) -> [Image] {
+        images
     }
 }

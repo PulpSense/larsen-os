@@ -62,7 +62,8 @@ private struct ConsistencyDesktopPanelContent: View {
 
     private func content(now: Date) -> some View {
         let year = TrackerCalendar.calendar.component(.year, from: now)
-        let completedCount = store.completedDays.filter { $0.hasPrefix("\(year)-") }.count
+        let wonDays = store.completedDays.filter { $0.hasPrefix("\(year)-") }.count
+        let todayHours = store.deepWorkHours(on: now)
         let todayComplete = store.isCompleted(now)
 
         return ZStack(alignment: .topTrailing) {
@@ -70,16 +71,22 @@ private struct ConsistencyDesktopPanelContent: View {
 
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
-                    Text(verbatim: "\(year) · \(completedCount) \(completedCount == 1 ? "day" : "days") marked")
-                    .font(.headline)
-                    .foregroundStyle(.indigo)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Deep Work Hours")
+                            .font(.headline)
+                            .foregroundStyle(.indigo)
+                        Text(todayComplete ? "\(todayHours) h today · day won" : "\(todayHours) / 4 h today")
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(.secondary)
+                            .contentTransition(.numericText())
+                    }
 
                     Spacer()
 
                     Button {
-                        store.toggle(now)
+                        addHour(now: now)
                     } label: {
-                        Image(systemName: todayComplete ? "checkmark" : "plus")
+                        Image(systemName: "plus")
                             .font(.caption.bold())
                             .foregroundStyle(.white)
                             .frame(width: 28, height: 28)
@@ -87,7 +94,7 @@ private struct ConsistencyDesktopPanelContent: View {
                             .contentTransition(.symbolEffect(.replace))
                     }
                     .buttonStyle(.plain)
-                    .help(todayComplete ? "Unmark today" : "Complete today")
+                    .help("Log one deep work hour")
 
                     DesktopPanelControlMenu(isVisible: controlsVisible) {
                         Button("Close", systemImage: "xmark", role: .destructive, action: close)
@@ -96,15 +103,20 @@ private struct ConsistencyDesktopPanelContent: View {
 
                 DesktopConsistencyYearGrid(
                     year: year,
-                    completedDays: store.completedDays,
+                    hoursByDay: store.deepWorkHours,
                     now: now
                 )
                 .frame(maxHeight: .infinity)
 
-                Label(
-                    "\(currentStreak(now: now)) \(currentStreak(now: now) == 1 ? "day" : "days") streak",
-                    systemImage: "flame.fill"
-                )
+                HStack {
+                    HStack(spacing: 5) {
+                        Image(systemName: "flame.fill")
+                        Text("\(currentStreak(now: now)) \(currentStreak(now: now) == 1 ? "day" : "days") streak")
+                    }
+                    .foregroundStyle(Color.digitalWallFlame)
+                    Spacer()
+                    Text("\(year) · \(wonDays) won \(wonDays == 1 ? "day" : "days")")
+                }
                 .font(.caption.weight(.medium))
                 .foregroundStyle(.secondary)
             }
@@ -121,11 +133,19 @@ private struct ConsistencyDesktopPanelContent: View {
             calendar: TrackerCalendar.calendar
         )
     }
+
+    private func addHour(now: Date) {
+        guard store.addDeepWorkHour(on: now) else { return }
+        DeepWorkCelebrationPresenter.shared.present(
+            streak: currentStreak(now: now),
+            hideApplicationOnDismiss: false
+        )
+    }
 }
 
 private struct DesktopConsistencyYearGrid: View {
     let year: Int
-    let completedDays: Set<String>
+    let hoursByDay: [String: Int]
     let now: Date
 
     var body: some View {
@@ -180,8 +200,7 @@ private struct DesktopConsistencyYearGrid: View {
     }
 
     private func color(for date: Date) -> Color {
-        if completedDays.contains(DayKey.string(from: date)) { return .indigo }
         if date > now { return .secondary.opacity(0.06) }
-        return .secondary.opacity(0.18)
+        return DeepWorkVisuals.color(for: hoursByDay[DayKey.string(from: date), default: 0])
     }
 }

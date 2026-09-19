@@ -77,17 +77,51 @@ enum WidgetContentTests {
             "The vision widget must show every image imported by the app."
         )
 
-        let today = Date(timeIntervalSince1970: 1_788_048_000)
-        let completed = WidgetContent.toggling(today, in: state)
+        let expandedImages = (1...9).map { VisionImage(fileName: "\($0).png") }
         precondition(
-            completed.completedDays.contains(DayKey.string(from: today)),
-            "The first consistency toggle must mark today complete."
+            VisionBoardPresentation.imagesForExpandedView(expandedImages).map(\.id)
+                == expandedImages.map(\.id),
+            "The expanded vision board must show every image visible in the compact panel."
         )
 
-        let uncompleted = WidgetContent.toggling(today, in: completed)
+        let today = Date(timeIntervalSince1970: 1_788_048_000)
+        let oneHour = WidgetContent.addingDeepWorkHour(today, in: state)
         precondition(
-            !uncompleted.completedDays.contains(DayKey.string(from: today)),
-            "The second consistency toggle must unmark today."
+            DeepWork.hours(on: today, in: oneHour.deepWorkHours) == 1
+                && !oneHour.completedDays.contains(DayKey.string(from: today)),
+            "The first logged hour must remain visible without winning the day."
+        )
+
+        let fourHours = (0..<3).reduce(oneHour) { current, _ in
+            WidgetContent.addingDeepWorkHour(today, in: current)
+        }
+        precondition(
+            DeepWork.hours(on: today, in: fourHours.deepWorkHours) == 4
+                && fourHours.completedDays.contains(DayKey.string(from: today)),
+            "The fourth logged hour must win the day."
+        )
+
+        let fifthHour = WidgetContent.addingDeepWorkHour(today, in: fourHours)
+        precondition(
+            DeepWork.hours(on: today, in: fifthHour.deepWorkHours) == 5
+                && fifthHour.completedDays.contains(DayKey.string(from: today)),
+            "Hours beyond the daily goal must be preserved without changing won-day status."
+        )
+
+        let restoredHours = try! JSONDecoder().decode(
+            WallState.self,
+            from: JSONEncoder().encode(fifthHour)
+        )
+        precondition(
+            DeepWork.hours(on: today, in: restoredHours.deepWorkHours) == 5,
+            "Deep-work hours must survive a persistence round trip."
+        )
+
+        let legacyData = Data(#"{"completedDays":["2026-08-31"],"phrasesMarkdown":"Keep going."}"#.utf8)
+        let migratedLegacyState = try! JSONDecoder().decode(WallState.self, from: legacyData)
+        precondition(
+            migratedLegacyState.deepWorkHours["2026-08-31"] == DeepWork.dailyGoalHours,
+            "Existing completed days must migrate to four deep-work hours."
         )
 
         var streakCalendar = Calendar(identifier: .gregorian)
@@ -160,6 +194,6 @@ enum WidgetContentTests {
             "A clock must be draggable to the final position."
         )
 
-        print("PASS: wall content, consistency, and world-clock contracts")
+        print("PASS: wall content, deep-work, and world-clock contracts")
     }
 }

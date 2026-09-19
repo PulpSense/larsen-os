@@ -856,6 +856,38 @@ struct DesktopPanelBackground: View {
     }
 }
 
+@MainActor
+final class MainAppWindowPresenter {
+    static let shared = MainAppWindowPresenter()
+
+    private var openMainWindow: (() -> Void)?
+
+    private init() {}
+
+    func register(openWindow: @escaping () -> Void) {
+        openMainWindow = openWindow
+    }
+
+    func present() {
+        NSApp.setActivationPolicy(.regular)
+
+        if let window = mainWindow {
+            window.makeKeyAndOrderFront(nil)
+        } else {
+            openMainWindow?()
+            DispatchQueue.main.async { [weak self] in
+                self?.mainWindow?.makeKeyAndOrderFront(nil)
+            }
+        }
+
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private var mainWindow: NSWindow? {
+        NSApp.windows.first { !($0 is NSPanel) && $0.canBecomeMain }
+    }
+}
+
 struct DesktopPanelControlMenu<Items: View>: View {
     let isVisible: Bool
     private let items: Items
@@ -867,6 +899,12 @@ struct DesktopPanelControlMenu<Items: View>: View {
 
     var body: some View {
         Menu {
+            Button("Open Digital Wall", systemImage: "macwindow") {
+                MainAppWindowPresenter.shared.present()
+            }
+
+            Divider()
+
             items
         } label: {
             Image(systemName: "ellipsis")

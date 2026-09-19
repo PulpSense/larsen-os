@@ -5,10 +5,10 @@ struct DashboardView: View {
     @State private var selection: Section = .vision
 
     enum Section: String, CaseIterable, Identifiable {
-        case vision = "Vision board"
-        case tracker = "Consistency"
+        case vision = "Vision Boards"
+        case tracker = "Deep Work Hours"
         case phrases = "Phrases"
-        case clocks = "World clocks"
+        case clocks = "World Clocks"
 
         var id: Self { self }
         var icon: String {

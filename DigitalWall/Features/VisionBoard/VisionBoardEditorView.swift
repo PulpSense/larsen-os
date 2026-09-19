@@ -37,7 +37,7 @@ struct VisionBoardEditorView: View {
             }
         }
         .padding(28)
-        .navigationTitle("Vision board")
+        .navigationTitle("Vision Boards")
         .onAppear {
             if selectedBoardID == nil {
                 selectedBoardID = store.visionBoards.first?.id
@@ -61,7 +61,7 @@ struct VisionBoardEditorView: View {
     private var header: some View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 6) {
-                Text("Your visual resets")
+                Text("Vision Boards")
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                 Text("Each board has its own pictures, privacy choices, and desktop window.")
                     .foregroundStyle(.secondary)
@@ -81,7 +81,7 @@ struct VisionBoardEditorView: View {
             .buttonStyle(.bordered)
             .disabled(selectedBoardID == nil)
 
-            Button("Desktop", systemImage: "rectangle.on.rectangle") {
+            Button("Show on Desktop", systemImage: "rectangle.on.rectangle") {
                 guard let selectedBoardID else { return }
                 VisionBoardDesktopPanelController.shared.present(
                     boardID: selectedBoardID,

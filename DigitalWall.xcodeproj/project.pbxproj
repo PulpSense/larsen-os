@@ -27,6 +27,8 @@
 		A00100000000000000000012 /* YearProgressDesktopPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00100000000000000000014 /* YearProgressDesktopPanel.swift */; };
 		A00100000000000000000013 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B00100000000000000000015 /* Assets.xcassets */; };
 		A00100000000000000000014 /* DigitalWallWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = B00300000000000000000002 /* DigitalWallWidget.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		A00100000000000000000015 /* PhraseMarkdown.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00100000000000000000016 /* PhraseMarkdown.swift */; };
+		A00100000000000000000016 /* DeepWorkCelebrationPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00100000000000000000017 /* DeepWorkCelebrationPresenter.swift */; };
 		A00200000000000000000001 /* DigitalWallWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00200000000000000000001 /* DigitalWallWidget.swift */; };
 		A00200000000000000000002 /* AppConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00100000000000000000004 /* AppConfiguration.swift */; };
 		A00200000000000000000003 /* WallState.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00100000000000000000005 /* WallState.swift */; };
@@ -55,6 +57,8 @@
 		B00100000000000000000013 /* WorldClockDesktopPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorldClockDesktopPanel.swift; sourceTree = "<group>"; };
 		B00100000000000000000014 /* YearProgressDesktopPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YearProgressDesktopPanel.swift; sourceTree = "<group>"; };
 		B00100000000000000000015 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		B00100000000000000000016 /* PhraseMarkdown.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhraseMarkdown.swift; sourceTree = "<group>"; };
+		B00100000000000000000017 /* DeepWorkCelebrationPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepWorkCelebrationPresenter.swift; sourceTree = "<group>"; };
 		B00200000000000000000001 /* DigitalWallWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DigitalWallWidget.swift; sourceTree = "<group>"; };
 		B00200000000000000000002 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B00200000000000000000003 /* DigitalWallWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = DigitalWallWidget.entitlements; sourceTree = "<group>"; };
@@ -175,6 +179,7 @@
 				B0010000000000000000000A /* YearTrackerView.swift */,
 				B00100000000000000000011 /* ConsistencyDesktopPanel.swift */,
 				B00100000000000000000014 /* YearProgressDesktopPanel.swift */,
+				B00100000000000000000017 /* DeepWorkCelebrationPresenter.swift */,
 			);
 			path = Tracker;
 			sourceTree = "<group>";
@@ -184,6 +189,7 @@
 			children = (
 				B0010000000000000000000B /* PhrasesView.swift */,
 				B0010000000000000000000E /* PhraseDesktopPanel.swift */,
+				B00100000000000000000016 /* PhraseMarkdown.swift */,
 			);
 			path = Phrases;
 			sourceTree = "<group>";
@@ -325,6 +331,8 @@
 				A00100000000000000000010 /* WorldClocksView.swift in Sources */,
 				A00100000000000000000011 /* WorldClockDesktopPanel.swift in Sources */,
 				A00100000000000000000012 /* YearProgressDesktopPanel.swift in Sources */,
+				A00100000000000000000015 /* PhraseMarkdown.swift in Sources */,
+				A00100000000000000000016 /* DeepWorkCelebrationPresenter.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -380,7 +388,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 53;
+				CURRENT_PROJECT_VERSION = 55;
 				DEVELOPMENT_TEAM = 2S64P663Y2;
 				ENABLE_APP_SANDBOX = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -401,7 +409,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 53;
+				CURRENT_PROJECT_VERSION = 55;
 				DEVELOPMENT_TEAM = 2S64P663Y2;
 				ENABLE_APP_SANDBOX = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -420,7 +428,7 @@
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = DigitalWallWidget/DigitalWallWidget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 53;
+				CURRENT_PROJECT_VERSION = 55;
 				DEVELOPMENT_TEAM = 2S64P663Y2;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = DigitalWallWidget/Info.plist;
@@ -439,7 +447,7 @@
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = DigitalWallWidget/DigitalWallWidget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 53;
+				CURRENT_PROJECT_VERSION = 55;
 				DEVELOPMENT_TEAM = 2S64P663Y2;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = DigitalWallWidget/Info.plist;

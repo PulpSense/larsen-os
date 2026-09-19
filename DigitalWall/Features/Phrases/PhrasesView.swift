@@ -8,7 +8,7 @@ struct PhrasesView: View {
         VStack(alignment: .leading, spacing: 20) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Words worth returning to")
+                    Text("Phrases")
                         .font(.system(size: 28, weight: .bold, design: .rounded))
                     Text("Each desktop window has its own Markdown and remembered position.")
                         .foregroundStyle(.secondary)
@@ -58,9 +58,11 @@ struct PhrasesView: View {
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
                     ScrollView {
-                        Text(renderedMarkdown)
+                        DesktopPhraseMarkdownView(
+                            markdown: selectedPhrase?.markdown ?? "",
+                            allowsTextSelection: true
+                        )
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .textSelection(.enabled)
                             .padding(18)
                     }
                     .background(.background.secondary, in: RoundedRectangle(cornerRadius: 16))
@@ -136,14 +138,6 @@ struct PhrasesView: View {
     private var selectedPhrase: DesktopPhrase? {
         guard let selectedPhraseID else { return nil }
         return store.desktopPhrase(selectedPhraseID)
-    }
-
-    private var renderedMarkdown: AttributedString {
-        let markdown = selectedPhrase?.markdown ?? ""
-        return (try? AttributedString(
-            markdown: markdown,
-            options: .init(interpretedSyntax: .full)
-        )) ?? AttributedString(markdown)
     }
 
     private func title(for phrase: DesktopPhrase) -> String {

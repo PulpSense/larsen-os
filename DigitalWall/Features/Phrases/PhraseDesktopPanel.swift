@@ -181,16 +181,24 @@ private struct PhraseDesktopPanelContent: View {
 
 }
 
-private struct DesktopPhraseMarkdownView: View {
+struct DesktopPhraseMarkdownView: View {
     let markdown: String
+    var allowsTextSelection = false
 
     var body: some View {
+        if allowsTextSelection {
+            blocks.textSelection(.enabled)
+        } else {
+            blocks.textSelection(.disabled)
+        }
+    }
+
+    private var blocks: some View {
         VStack(alignment: .leading, spacing: 7) {
             ForEach(DesktopPhraseMarkdownBlock.parse(markdown)) { block in
                 blockView(block)
             }
         }
-        .textSelection(.disabled)
     }
 
     @ViewBuilder
@@ -222,8 +230,53 @@ private struct DesktopPhraseMarkdownView: View {
         case .paragraph:
             Text(inlineMarkdown(block.text))
                 .font(.system(.body, design: .rounded))
+        case let .table(table):
+            tableView(table)
         case .spacer:
             Color.clear.frame(height: 4)
+        }
+    }
+
+    private func tableView(_ table: PhraseMarkdownTable) -> some View {
+        PhraseTableGridLayout(columnCount: table.headers.count) {
+            ForEach(tableCells(for: table)) { cell in
+                Text(inlineMarkdown(cell.text))
+                    .font(.system(.callout, design: .rounded).weight(cell.isHeader ? .semibold : .regular))
+                    .frame(
+                        maxWidth: .infinity,
+                        maxHeight: .infinity,
+                        alignment: alignment(for: cell.alignment)
+                    )
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
+                    .background(cell.isHeader ? Color.primary.opacity(0.09) : Color.primary.opacity(0.035))
+                    .overlay {
+                        Rectangle().stroke(.primary.opacity(0.13), lineWidth: 0.5)
+                    }
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private func tableCells(for table: PhraseMarkdownTable) -> [PhraseTableCell] {
+        ([table.headers] + table.rows).enumerated().flatMap { rowIndex, row in
+            row.enumerated().map { columnIndex, text in
+                PhraseTableCell(
+                    id: "\(rowIndex)-\(columnIndex)",
+                    text: text,
+                    alignment: table.alignments[columnIndex],
+                    isHeader: rowIndex == 0
+                )
+            }
+        }
+    }
+
+    private func alignment(for alignment: PhraseTableAlignment) -> Alignment {
+        switch alignment {
+        case .leading: .leading
+        case .center: .center
+        case .trailing: .trailing
         }
     }
 
@@ -243,68 +296,90 @@ private struct DesktopPhraseMarkdownView: View {
     }
 }
 
-private struct DesktopPhraseMarkdownBlock: Identifiable {
-    enum Kind {
-        case heading(Int)
-        case bullet
-        case numbered(String)
-        case quote
-        case paragraph
-        case spacer
+private struct PhraseTableCell: Identifiable {
+    let id: String
+    let text: String
+    let alignment: PhraseTableAlignment
+    let isHeader: Bool
+}
+
+private struct PhraseTableGridLayout: Layout {
+    let columnCount: Int
+
+    func sizeThatFits(
+        proposal: ProposedViewSize,
+        subviews: Subviews,
+        cache: inout ()
+    ) -> CGSize {
+        guard columnCount > 0, !subviews.isEmpty else { return .zero }
+        let width = resolvedWidth(proposal: proposal, subviews: subviews)
+        let columnWidth = PhraseTableSizing.columnWidth(
+            availableWidth: width,
+            columnCount: columnCount
+        )
+        return CGSize(
+            width: width,
+            height: rowHeights(subviews: subviews, columnWidth: columnWidth).reduce(0, +)
+        )
     }
 
-    let id: Int
-    let kind: Kind
-    let text: String
+    func placeSubviews(
+        in bounds: CGRect,
+        proposal: ProposedViewSize,
+        subviews: Subviews,
+        cache: inout ()
+    ) {
+        guard columnCount > 0 else { return }
+        let columnWidth = PhraseTableSizing.columnWidth(
+            availableWidth: bounds.width,
+            columnCount: columnCount
+        )
+        let heights = rowHeights(subviews: subviews, columnWidth: columnWidth)
+        var y = bounds.minY
 
-    static func parse(_ markdown: String) -> [DesktopPhraseMarkdownBlock] {
-        markdown.components(separatedBy: .newlines).enumerated().map { index, rawLine in
-            let line = rawLine.trimmingCharacters(in: .whitespaces)
-            guard !line.isEmpty else {
-                return DesktopPhraseMarkdownBlock(id: index, kind: .spacer, text: "")
+        for (index, subview) in subviews.enumerated() {
+            let row = index / columnCount
+            let column = index % columnCount
+            subview.place(
+                at: CGPoint(
+                    x: bounds.minX + CGFloat(column) * columnWidth,
+                    y: y
+                ),
+                anchor: .topLeading,
+                proposal: ProposedViewSize(width: columnWidth, height: heights[row])
+            )
+            if column == columnCount - 1 || index == subviews.count - 1 {
+                y += heights[row]
             }
-
-            let headingMarks = line.prefix { $0 == "#" }.count
-            if (1...3).contains(headingMarks),
-               line.dropFirst(headingMarks).hasPrefix(" ") {
-                return DesktopPhraseMarkdownBlock(
-                    id: index,
-                    kind: .heading(headingMarks),
-                    text: String(line.dropFirst(headingMarks + 1))
-                )
-            }
-
-            if line.hasPrefix("- ") || line.hasPrefix("+ ") || line.hasPrefix("* ") {
-                return DesktopPhraseMarkdownBlock(
-                    id: index,
-                    kind: .bullet,
-                    text: String(line.dropFirst(2))
-                )
-            }
-
-            if let dot = line.firstIndex(of: ".") {
-                let digits = line[..<dot]
-                let remainder = line[line.index(after: dot)...]
-                if !digits.isEmpty,
-                   digits.allSatisfy(\.isNumber),
-                   remainder.hasPrefix(" ") {
-                    return DesktopPhraseMarkdownBlock(
-                        id: index,
-                        kind: .numbered("\(digits)."),
-                        text: String(remainder.dropFirst())
-                    )
-                }
-            }
-
-            if line.hasPrefix("> ") {
-                return DesktopPhraseMarkdownBlock(
-                    id: index,
-                    kind: .quote,
-                    text: String(line.dropFirst(2))
-                )
-            }
-
-            return DesktopPhraseMarkdownBlock(id: index, kind: .paragraph, text: line)
         }
+    }
+
+    private func resolvedWidth(proposal: ProposedViewSize, subviews: Subviews) -> CGFloat {
+        if let width = proposal.width, width.isFinite {
+            return max(0, width)
+        }
+
+        var columnWidths = Array(repeating: CGFloat.zero, count: columnCount)
+        for (index, subview) in subviews.enumerated() {
+            let column = index % columnCount
+            columnWidths[column] = max(
+                columnWidths[column],
+                subview.sizeThatFits(.unspecified).width
+            )
+        }
+        return columnWidths.reduce(0, +)
+    }
+
+    private func rowHeights(subviews: Subviews, columnWidth: CGFloat) -> [CGFloat] {
+        let rowCount = Int(ceil(Double(subviews.count) / Double(columnCount)))
+        var heights = Array(repeating: CGFloat.zero, count: rowCount)
+        for (index, subview) in subviews.enumerated() {
+            let row = index / columnCount
+            heights[row] = max(
+                heights[row],
+                subview.sizeThatFits(ProposedViewSize(width: columnWidth, height: nil)).height
+            )
+        }
+        return heights
     }
 }

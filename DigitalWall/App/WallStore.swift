@@ -2,6 +2,7 @@ import AppKit
 import Foundation
 import SwiftUI
 import UniformTypeIdentifiers
+import WidgetKit
 
 @MainActor
 final class WallStore: ObservableObject {
@@ -18,6 +19,7 @@ final class WallStore: ObservableObject {
     var visionBoardPrivacyEnabled: Bool { state.visionBoardPrivacyEnabled }
     var visionBoardPrivacyMessage: String { state.visionBoardPrivacyMessage }
     var completedDays: Set<String> { state.completedDays }
+    var deepWorkHours: [String: Int] { state.deepWorkHours }
     var worldClocks: [WorldClock] { state.worldClocks }
     var desktopPhrases: [DesktopPhrase] { state.desktopPhrases }
 
@@ -130,12 +132,30 @@ final class WallStore: ObservableObject {
     }
 
     func isCompleted(_ date: Date) -> Bool {
-        state.completedDays.contains(DayKey.string(from: date))
+        DeepWork.isWon(date, in: state.deepWorkHours)
     }
 
-    func toggle(_ date: Date) {
-        state = WidgetContent.toggling(date, in: state)
-        persist()
+    func deepWorkHours(on date: Date) -> Int {
+        DeepWork.hours(on: date, in: state.deepWorkHours)
+    }
+
+    @discardableResult
+    func addDeepWorkHour(on date: Date) -> Bool {
+        state.deepWorkHours = WallPersistence.load().deepWorkHours
+        let previousHours = deepWorkHours(on: date)
+        state = DeepWork.addingHour(on: date, to: state)
+        persist(preserveOnDiskDeepWorkHours: false)
+        return previousHours == DeepWork.dailyGoalHours - 1
+    }
+
+    func setDeepWorkHours(_ hours: Int, on date: Date) {
+        state.deepWorkHours = WallPersistence.load().deepWorkHours
+        state = DeepWork.settingHours(hours, on: date, in: state)
+        persist(preserveOnDiskDeepWorkHours: false)
+    }
+
+    func reloadFromDisk() {
+        state = WallPersistence.load()
     }
 
     func updatePhrase(_ phrase: String, for id: UUID) {
@@ -270,9 +290,13 @@ final class WallStore: ObservableObject {
         try? WallPersistence.save(state)
     }
 
-    private func persist() {
+    private func persist(preserveOnDiskDeepWorkHours: Bool = true) {
         do {
+            if preserveOnDiskDeepWorkHours {
+                state.deepWorkHours = WallPersistence.load().deepWorkHours
+            }
             try WallPersistence.save(state)
+            WidgetCenter.shared.reloadTimelines(ofKind: AppConfiguration.consistencyWidgetKind)
         } catch {
             lastError = error.localizedDescription
         }

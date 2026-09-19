@@ -35,6 +35,23 @@ struct DesktopPanelInteractionTests {
         )
         clickThroughPanel.close()
 
+        let mainWindow = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 500, height: 320),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        mainWindow.orderOut(nil)
+        MainAppWindowPresenter.shared.register {
+            mainWindow.makeKeyAndOrderFront(nil)
+        }
+        MainAppWindowPresenter.shared.present()
+        precondition(
+            mainWindow.isVisible,
+            "The shared widget menu action must restore the main app window"
+        )
+        mainWindow.close()
+
         let migrated = DesktopPanelSupport.migratedFrame(
             currentSize: NSSize(width: 680, height: 170),
             legacyFrame: NSRect(x: 40, y: 238, width: 707, height: 224),
