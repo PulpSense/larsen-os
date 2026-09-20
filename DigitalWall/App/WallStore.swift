@@ -2,32 +2,15 @@ import AppKit
 import Foundation
 import SwiftUI
 import UniformTypeIdentifiers
-import WidgetKit
 
 @MainActor
 final class WallStore: ObservableObject {
     @Published private(set) var state: WallState
     @Published var lastError: String?
-    private var deepWorkHoursObserver: NSObjectProtocol?
 
     init() {
         state = WallPersistence.load()
         removeLegacyFolderAccess()
-        deepWorkHoursObserver = DistributedNotificationCenter.default().addObserver(
-            forName: AppConfiguration.deepWorkHoursDidChangeNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            Task { @MainActor [weak self] in
-                self?.reloadDeepWorkHoursFromDisk()
-            }
-        }
-    }
-
-    deinit {
-        if let deepWorkHoursObserver {
-            DistributedNotificationCenter.default().removeObserver(deepWorkHoursObserver)
-        }
     }
 
     var images: [VisionImage] { state.images }
@@ -174,12 +157,6 @@ final class WallStore: ObservableObject {
         state = WallPersistence.load()
     }
 
-    private func reloadDeepWorkHoursFromDisk() {
-        let hours = WallPersistence.load().deepWorkHours
-        guard hours != state.deepWorkHours else { return }
-        state.deepWorkHours = hours
-    }
-
     func updatePhrase(_ phrase: String, for id: UUID) {
         guard let index = state.images.firstIndex(where: { $0.id == id }) else { return }
         state.images[index].phrase = phrase
@@ -318,7 +295,6 @@ final class WallStore: ObservableObject {
                 state.deepWorkHours = WallPersistence.load().deepWorkHours
             }
             try WallPersistence.save(state)
-            WidgetCenter.shared.reloadTimelines(ofKind: AppConfiguration.consistencyWidgetKind)
         } catch {
             lastError = error.localizedDescription
         }

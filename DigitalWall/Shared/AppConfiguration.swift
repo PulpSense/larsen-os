@@ -41,15 +41,8 @@ enum DeepWorkVisuals {
 
 enum AppConfiguration {
     static let bundleIdentifier = "com.santileoni.DigitalWall"
-    static let widgetBundleIdentifier = "com.santileoni.DigitalWall.Widget"
     static let appGroupIdentifier = "group.com.santileoni.DigitalWall"
     static let urlScheme = "digitalwall2"
-    static let visionBoardWidgetKind = "DigitalWallVisionBoardWidgetV5"
-    static let consistencyWidgetKind = "DigitalWallConsistencyWidgetV3"
-    static let phrasesWidgetKind = "DigitalWallEditablePhraseWidgetV3"
-    static let deepWorkHoursDidChangeNotification = Notification.Name(
-        "com.santileoni.DigitalWall.deepWorkHoursDidChange"
-    )
 
     static var sharedContainerURL: URL {
         if let groupURL = FileManager.default.containerURL(

@@ -1,7 +1,7 @@
 import Foundation
 
 @main
-enum WidgetContentTests {
+enum WallContentTests {
     static func main() {
         let images = [
             VisionImage(fileName: "one.png"),
@@ -72,13 +72,8 @@ enum WidgetContentTests {
             "Every phrase window and its visibility must persist independently."
         )
 
-        precondition(
-            WidgetContent.visionImages(from: state).map(\.id) == images.map(\.id),
-            "The vision widget must show every image imported by the app."
-        )
-
         let today = Date(timeIntervalSince1970: 1_788_048_000)
-        let oneHour = WidgetContent.addingDeepWorkHour(today, in: state)
+        let oneHour = DeepWork.addingHour(on: today, to: state)
         precondition(
             DeepWork.hours(on: today, in: oneHour.deepWorkHours) == 1
                 && !oneHour.completedDays.contains(DayKey.string(from: today)),
@@ -86,7 +81,7 @@ enum WidgetContentTests {
         )
 
         let fourHours = (0..<3).reduce(oneHour) { current, _ in
-            WidgetContent.addingDeepWorkHour(today, in: current)
+            DeepWork.addingHour(on: today, to: current)
         }
         precondition(
             DeepWork.hours(on: today, in: fourHours.deepWorkHours) == 4
@@ -94,7 +89,7 @@ enum WidgetContentTests {
             "The fourth logged hour must win the day."
         )
 
-        let fifthHour = WidgetContent.addingDeepWorkHour(today, in: fourHours)
+        let fifthHour = DeepWork.addingHour(on: today, to: fourHours)
         precondition(
             DeepWork.hours(on: today, in: fifthHour.deepWorkHours) == 5
                 && fifthHour.completedDays.contains(DayKey.string(from: today)),
