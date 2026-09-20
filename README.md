@@ -5,9 +5,10 @@ A privacy-first, native macOS vision board and deep-work tracker built with Swif
 ## Run locally
 
 1. Open `DigitalWall.xcodeproj` in Xcode 16 or newer.
-2. Select the **DigitalWall** target, open **Signing & Capabilities**, and choose your development team.
-3. Confirm the target uses the `group.com.santileoni.DigitalWall` App Group. If that identifier is unavailable for your team, change it in `DigitalWall.entitlements` and `AppConfiguration.swift`.
-4. Run the **DigitalWall** scheme on **My Mac**.
+2. Copy `Config/Signing.local.xcconfig.example` to `Config/Signing.local.xcconfig`.
+3. In that local file, enter your Apple development-team ID and unique reverse-domain bundle and App Group identifiers. The file is ignored by Git.
+4. Register the App Group identifier for your Apple development team and enable it for the app identifier.
+5. Run the **DigitalWall** scheme on **My Mac**.
 
 ## Installed app
 
@@ -42,4 +43,4 @@ Use **Edit deep work** to correct or backfill a selected date. Incrementing toda
 
 ## Data and privacy
 
-Digital Wall stores its JSON state and copied vision-board images locally in the `group.com.santileoni.DigitalWall` App Group container. The app has no network client, account system, analytics, or cloud dependency. Removing the app does not automatically remove that App Group data.
+Digital Wall stores its JSON state and copied vision-board images locally in the App Group container configured in your private `Signing.local.xcconfig`. The checked-in example identifiers are placeholders and are not tied to any person or development team. The app has no network client, account system, analytics, or cloud dependency. Removing the app does not automatically remove that App Group data.

@@ -40,8 +40,9 @@ enum DeepWorkVisuals {
 }
 
 enum AppConfiguration {
-    static let bundleIdentifier = "com.santileoni.DigitalWall"
-    static let appGroupIdentifier = "group.com.santileoni.DigitalWall"
+    static let appGroupIdentifier = Bundle.main.object(
+        forInfoDictionaryKey: "DigitalWallAppGroupIdentifier"
+    ) as? String ?? "group.com.example.DigitalWall"
     static let urlScheme = "digitalwall2"
 
     static var sharedContainerURL: URL {
