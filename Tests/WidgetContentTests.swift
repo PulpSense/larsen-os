@@ -77,13 +77,6 @@ enum WidgetContentTests {
             "The vision widget must show every image imported by the app."
         )
 
-        let expandedImages = (1...9).map { VisionImage(fileName: "\($0).png") }
-        precondition(
-            VisionBoardPresentation.imagesForExpandedView(expandedImages).map(\.id)
-                == expandedImages.map(\.id),
-            "The expanded vision board must show every image visible in the compact panel."
-        )
-
         let today = Date(timeIntervalSince1970: 1_788_048_000)
         let oneHour = WidgetContent.addingDeepWorkHour(today, in: state)
         precondition(
@@ -129,6 +122,17 @@ enum WidgetContentTests {
                 && DeepWorkCelebrationMilestone.forHours(8) == .doubleGoal
                 && DeepWorkCelebrationMilestone.forHours(12) == .keepBuilding,
             "Every post-goal hour must map to the intended escalating celebration."
+        )
+        let bonusConfiguration = DeepWorkCelebrationMilestone.bonusHour.configuration(hours: 5)
+        let continuingParticleCounts = (9...16).map {
+            DeepWorkCelebrationMilestone.keepBuilding.configuration(hours: $0).particleCount
+        }
+        precondition(
+            bonusConfiguration.title == "BONUS HOUR"
+                && bonusConfiguration.detail.contains("beyond four")
+                && zip(continuingParticleCounts, continuingParticleCounts.dropFirst())
+                    .allSatisfy { $0.0 != $0.1 },
+            "Celebration copy and bounded 9H+ intensity must stay centralized and keep evolving."
         )
 
         let legacyData = Data(#"{"completedDays":["2026-08-31"],"phrasesMarkdown":"Keep going."}"#.utf8)

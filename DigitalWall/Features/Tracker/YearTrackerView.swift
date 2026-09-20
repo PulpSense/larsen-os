@@ -284,7 +284,10 @@ private struct StatCard: View {
                 .frame(width: 34, height: 34)
                 .background(tint.opacity(0.14), in: RoundedRectangle(cornerRadius: 10))
             VStack(alignment: .leading, spacing: 1) {
-                Text(value).font(.title3.bold()).monospacedDigit()
+                Text(value)
+                    .font(.title3.bold())
+                    .monospacedDigit()
+                    .foregroundStyle(tint)
                 Text(label).font(.caption).foregroundStyle(.secondary)
             }
             Spacer(minLength: 8)

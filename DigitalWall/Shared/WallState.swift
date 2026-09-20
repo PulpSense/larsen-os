@@ -288,16 +288,53 @@ enum DeepWorkCelebrationMilestone: Equatable {
         }
     }
 
-    var title: String {
+    func configuration(hours: Int) -> DeepWorkCelebrationConfiguration {
         switch self {
-        case .dayWon: "DAY WON"
-        case .bonusHour: "BONUS HOUR"
-        case .momentum: "MOMENTUM"
-        case .unstoppable: "UNSTOPPABLE"
-        case .doubleGoal: "2× GOAL"
-        case .keepBuilding: "KEEP BUILDING"
+        case .dayWon:
+            return DeepWorkCelebrationConfiguration(
+                title: "DAY WON",
+                detail: "4 hours of deep work",
+                particleCount: 220
+            )
+        case .bonusHour:
+            return DeepWorkCelebrationConfiguration(
+                title: "BONUS HOUR",
+                detail: "Every hour beyond four makes you stronger.",
+                particleCount: 12
+            )
+        case .momentum:
+            return DeepWorkCelebrationConfiguration(
+                title: "MOMENTUM",
+                detail: "Extra hours compound.",
+                particleCount: 20
+            )
+        case .unstoppable:
+            return DeepWorkCelebrationConfiguration(
+                title: "UNSTOPPABLE",
+                detail: "Discipline today. A brighter tomorrow.",
+                particleCount: 26
+            )
+        case .doubleGoal:
+            return DeepWorkCelebrationConfiguration(
+                title: "2× GOAL",
+                detail: "Twice the target.",
+                particleCount: 42
+            )
+        case .keepBuilding:
+            let cycle = max(0, hours - 9) % 7
+            return DeepWorkCelebrationConfiguration(
+                title: "KEEP BUILDING",
+                detail: "No limits. More focus.",
+                particleCount: 28 + cycle * 4
+            )
         }
     }
+}
+
+struct DeepWorkCelebrationConfiguration: Equatable {
+    let title: String
+    let detail: String
+    let particleCount: Int
 }
 
 enum ConsistencyStreak {
@@ -358,11 +395,5 @@ enum WidgetContent {
 
     static func addingDeepWorkHour(_ date: Date, in state: WallState) -> WallState {
         DeepWork.addingHour(on: date, to: state)
-    }
-}
-
-enum VisionBoardPresentation {
-    static func imagesForExpandedView<Image>(_ images: [Image]) -> [Image] {
-        images
     }
 }

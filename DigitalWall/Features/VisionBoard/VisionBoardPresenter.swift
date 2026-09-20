@@ -114,10 +114,7 @@ private struct ImmersiveVisionBoard: View {
                     .fill(.black.opacity(appeared ? 0.48 : 0))
                     .background(.ultraThinMaterial)
 
-                ForEach(
-                    Array(VisionBoardPresentation.imagesForExpandedView(images).enumerated()),
-                    id: \.element.id
-                ) { index, image in
+                ForEach(Array(images.enumerated()), id: \.element.id) { index, image in
                     visionCard(image, index: index, canvas: proxy.size)
                 }
 

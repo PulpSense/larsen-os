@@ -152,7 +152,7 @@ private struct DayWonCelebrationView: View {
                     .stroke(Color.white.opacity(0.82), lineWidth: 7)
                     .frame(width: 150, height: 150)
                     .scaleEffect(impactRingVisible ? 4.8 : 0.45)
-                    .opacity(impactVisible ? (impactRingVisible ? 0 : 0.9) : 0)
+                    .opacity(reduceMotion ? 0 : (impactVisible ? (impactRingVisible ? 0 : 0.9) : 0))
 
                 ForEach(pieces) { piece in
                     RoundedRectangle(cornerRadius: 2, style: .continuous)
@@ -163,7 +163,7 @@ private struct DayWonCelebrationView: View {
                             x: proxy.size.width * (burst ? piece.endX : piece.startX),
                             y: proxy.size.height * (burst ? piece.endY : 0.84)
                         )
-                        .opacity(impactVisible && !burst ? 1 : 0)
+                        .opacity(reduceMotion ? 0 : (impactVisible && !burst ? 1 : 0))
                         .animation(
                             .easeOut(duration: piece.duration).delay(piece.delay),
                             value: burst
@@ -180,7 +180,7 @@ private struct DayWonCelebrationView: View {
                             y: proxy.size.height * (streakVisible ? spark.endY : 0.64)
                         )
                         .scaleEffect(streakVisible ? 0.15 : 1)
-                        .opacity(sparksReady && !streakVisible ? 0.95 : 0)
+                        .opacity(reduceMotion ? 0 : (sparksReady && !streakVisible ? 0.95 : 0))
                         .animation(
                             .easeOut(duration: spark.duration).delay(spark.delay),
                             value: streakVisible
@@ -254,6 +254,15 @@ private struct DayWonCelebrationView: View {
 
     @MainActor
     private func runSequence() async {
+        if reduceMotion {
+            impactVisible = true
+            copyVisible = true
+            streakVisible = true
+            try? await Task.sleep(for: .milliseconds(5_100))
+            fading = true
+            return
+        }
+
         let impactAnimation = reduceMotion
             ? Animation.easeOut(duration: 0.01)
             : .spring(response: 0.48, dampingFraction: 0.58)
@@ -304,27 +313,8 @@ private struct BonusHourCelebrationView: View {
     @State private var fading = false
 
     private var accent: Color { DeepWorkVisuals.earnedColor(for: hours) }
-
-    private var detail: String {
-        switch milestone {
-        case .bonusHour: "Every hour beyond four makes you stronger."
-        case .momentum: "Extra hours compound."
-        case .unstoppable: "Discipline today. A brighter tomorrow."
-        case .doubleGoal: "Twice the target."
-        case .keepBuilding: "No limits. More focus."
-        case .dayWon: ""
-        }
-    }
-
-    private var particleCount: Int {
-        switch milestone {
-        case .bonusHour: 12
-        case .momentum: 20
-        case .unstoppable: 26
-        case .doubleGoal: 42
-        case .keepBuilding: min(52, 26 + max(0, hours - 9) * 4)
-        case .dayWon: 0
-        }
+    private var configuration: DeepWorkCelebrationConfiguration {
+        milestone.configuration(hours: hours)
     }
 
     var body: some View {
@@ -358,8 +348,8 @@ private struct BonusHourCelebrationView: View {
 
                 milestoneEffect(size: effectSize)
 
-                ForEach(0..<particleCount, id: \.self) { index in
-                    let angle = Double(index) / Double(max(1, particleCount)) * Double.pi * 2
+                ForEach(0..<(reduceMotion ? 0 : configuration.particleCount), id: \.self) { index in
+                    let angle = Double(index) / Double(max(1, configuration.particleCount)) * Double.pi * 2
                     let distance = effectSize * (0.28 + CGFloat((index * 37) % 31) / 100)
                     Circle()
                         .fill(index.isMultiple(of: 4) ? Color.digitalWallFlame : accent)
@@ -399,13 +389,13 @@ private struct BonusHourCelebrationView: View {
                             .foregroundStyle(.white.opacity(0.72))
                     }
 
-                    Text(milestone.title)
+                    Text(configuration.title)
                         .font(.system(size: 32, weight: .black, design: .rounded))
                         .tracking(2.2)
                         .foregroundStyle(accent)
                         .shadow(color: accent.opacity(0.65), radius: 20)
 
-                    Text(detail)
+                    Text(configuration.detail)
                         .font(.system(size: 18, weight: .medium, design: .rounded))
                         .foregroundStyle(.white.opacity(0.72))
 
@@ -439,8 +429,8 @@ private struct BonusHourCelebrationView: View {
                     Circle()
                         .stroke(accent.opacity(0.72 - Double(ring) * 0.16), lineWidth: CGFloat(5 - ring))
                         .frame(width: size * (0.42 + CGFloat(ring) * 0.18))
-                        .scaleEffect(effectActive ? 1.35 : 0.38)
-                        .opacity(effectActive ? 0 : 0.9)
+                        .scaleEffect(reduceMotion ? 1 : (effectActive ? 1.35 : 0.38))
+                        .opacity(reduceMotion ? 0.72 : (effectActive ? 0 : 0.9))
                         .animation(
                             .easeOut(duration: reduceMotion ? 0.01 : 1.0)
                                 .delay(reduceMotion ? 0 : Double(ring) * 0.10),
@@ -453,10 +443,10 @@ private struct BonusHourCelebrationView: View {
                 ForEach(0..<20, id: \.self) { ray in
                     Capsule()
                         .fill(ray.isMultiple(of: 3) ? Color.digitalWallFlame : accent)
-                        .frame(width: effectActive ? size * 0.18 : size * 0.04, height: 7)
-                        .offset(x: effectActive ? size * 0.42 : size * 0.18)
+                        .frame(width: reduceMotion ? size * 0.12 : (effectActive ? size * 0.18 : size * 0.04), height: 7)
+                        .offset(x: reduceMotion ? size * 0.34 : (effectActive ? size * 0.42 : size * 0.18))
                         .rotationEffect(.degrees(Double(ray) * 18))
-                        .opacity(effectActive ? 0 : 0.92)
+                        .opacity(reduceMotion ? 0.72 : (effectActive ? 0 : 0.92))
                         .animation(
                             .easeOut(duration: reduceMotion ? 0.01 : 0.82)
                                 .delay(reduceMotion ? 0 : Double(ray % 4) * 0.025),
@@ -502,34 +492,50 @@ private struct BonusHourCelebrationView: View {
     }
 
     private var progressPips: some View {
-        HStack(spacing: 12) {
-            ForEach(0..<7, id: \.self) { index in
-                Circle()
-                    .fill(index < min(7, max(1, hours - 8)) ? accent : .clear)
-                    .frame(width: 11, height: 11)
-                    .overlay {
-                        Circle().stroke(accent.opacity(0.7), lineWidth: 1.5)
-                    }
-                    .shadow(color: accent.opacity(0.75), radius: 6)
+        let extraHours = max(1, hours - 8)
+        let level = (extraHours - 1) / 7 + 1
+        let filledPips = (extraHours - 1) % 7 + 1
+
+        return VStack(spacing: 9) {
+            HStack(spacing: 12) {
+                ForEach(0..<7, id: \.self) { index in
+                    Circle()
+                        .fill(index < filledPips ? accent : .clear)
+                        .frame(width: 11, height: 11)
+                        .overlay {
+                            Circle().stroke(accent.opacity(0.7), lineWidth: 1.5)
+                        }
+                        .shadow(color: accent.opacity(0.75), radius: 6)
+                }
             }
+
+            Text("LEVEL \(level)")
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .tracking(1.4)
+                .foregroundStyle(accent.opacity(0.82))
         }
     }
 
     @MainActor
     private func runSequence() async {
+        if reduceMotion {
+            entered = true
+            try? await Task.sleep(for: .milliseconds(2_400))
+            fading = true
+            return
+        }
+
         withAnimation(
-            reduceMotion
-                ? .easeOut(duration: 0.01)
-                : .spring(response: 0.48, dampingFraction: 0.62)
+            .spring(response: 0.48, dampingFraction: 0.62)
         ) {
             entered = true
         }
 
-        try? await Task.sleep(for: .milliseconds(reduceMotion ? 1 : 90))
+        try? await Task.sleep(for: .milliseconds(90))
         effectActive = true
 
-        try? await Task.sleep(for: .milliseconds(reduceMotion ? 20 : 2_050))
-        withAnimation(.easeInOut(duration: reduceMotion ? 0.01 : 0.42)) {
+        try? await Task.sleep(for: .milliseconds(2_050))
+        withAnimation(.easeInOut(duration: 0.42)) {
             fading = true
         }
     }

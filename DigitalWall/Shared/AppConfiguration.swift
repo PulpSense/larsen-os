@@ -17,13 +17,25 @@ enum DeepWorkVisuals {
     }
 
     static func earnedColor(for hours: Int) -> Color {
-        let cappedHours = min(max(hours, 4), 10)
-        let progress = Double(cappedHours - 4) / 6
         let greenHue = 0.38
         let goldHue = 0.115
-        let hue = greenHue + (goldHue - greenHue) * progress
-        let brightness = 0.74 + 0.18 * progress
-        return Color(hue: hue, saturation: 0.78, brightness: brightness)
+        let flameHue = 0.025
+        let earnedHours = max(hours, 4)
+
+        if earnedHours <= 10 {
+            let progress = Double(earnedHours - 4) / 6
+            let hue = greenHue + (goldHue - greenHue) * progress
+            let brightness = 0.74 + 0.18 * progress
+            return Color(hue: hue, saturation: 0.78, brightness: brightness)
+        }
+
+        let extraHours = Double(earnedHours - 10)
+        let heatProgress = min(extraHours / 8, 1)
+        let hue = goldHue + (flameHue - goldHue) * heatProgress
+        let pulse = (sin(extraHours * 0.85) + 1) / 2
+        let brightness = 0.84 + pulse * 0.12
+        let saturation = 0.78 + heatProgress * 0.16
+        return Color(hue: hue, saturation: saturation, brightness: brightness)
     }
 }
 
