@@ -2,6 +2,31 @@
 
 A privacy-first, native macOS vision board and deep-work tracker built with SwiftUI. It turns the desktop into a lightweight place for goals, focus hours, phrases, year progress, and world clocks without requiring an account or cloud service.
 
+## What it looks like
+
+The floating **Deep Work Hours** panel keeps the current day, yearly history, won days, and streak visible without opening the main app.
+
+![Deep Work Hours floating panel](docs/images/deep-work-hours.png)
+
+**World Clocks** keeps the time and offset for the places you work with in one horizontal strip.
+
+![World Clocks floating panel](docs/images/world-clocks.png)
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <strong>Year Elapsed</strong><br><br>
+      A compact view of how much of the year has passed.<br><br>
+      <img src="docs/images/year-elapsed.png" alt="Year Elapsed floating panel">
+    </td>
+    <td width="50%" valign="top">
+      <strong>Phrases</strong><br><br>
+      Keep principles, reminders, or short Markdown notes on the desktop.<br><br>
+      <img src="docs/images/ten-x-rule.png" alt="Phrase panel showing the 10X Rule">
+    </td>
+  </tr>
+</table>
+
 ## Run locally
 
 1. Open `DigitalWall.xcodeproj` in Xcode 16 or newer.
