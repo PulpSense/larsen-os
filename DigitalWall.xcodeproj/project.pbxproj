@@ -56,6 +56,7 @@
 		B00100000000000000000016 /* PhraseMarkdown.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhraseMarkdown.swift; sourceTree = "<group>"; };
 		B00100000000000000000017 /* DeepWorkCelebrationPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepWorkCelebrationPresenter.swift; sourceTree = "<group>"; };
 		B00100000000000000000018 /* FullScreenOverlayController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FullScreenOverlayController.swift; sourceTree = "<group>"; };
+		B00100000000000000000019 /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config/Signing.xcconfig; sourceTree = SOURCE_ROOT; };
 		B00300000000000000000001 /* Digital Wall.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Digital Wall.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -74,6 +75,7 @@
 			isa = PBXGroup;
 			children = (
 				F00100000000000000000001 /* DigitalWall */,
+				B00100000000000000000019 /* Signing.xcconfig */,
 				F00300000000000000000001 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -293,6 +295,7 @@
 		};
 		H00100000000000000000001 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = B00100000000000000000019 /* Signing.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = DigitalWall/DigitalWall.entitlements;
@@ -300,12 +303,11 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 55;
-				DEVELOPMENT_TEAM = 2S64P663Y2;
 				ENABLE_APP_SANDBOX = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = DigitalWall/Info.plist;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.santileoni.DigitalWall;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(DIGITAL_WALL_BUNDLE_ID)";
 				PRODUCT_NAME = "Digital Wall";
 				REGISTER_APP_GROUPS = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -314,6 +316,7 @@
 		};
 		H00100000000000000000002 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = B00100000000000000000019 /* Signing.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = DigitalWall/DigitalWall.entitlements;
@@ -321,12 +324,11 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 55;
-				DEVELOPMENT_TEAM = 2S64P663Y2;
 				ENABLE_APP_SANDBOX = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = DigitalWall/Info.plist;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.santileoni.DigitalWall;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(DIGITAL_WALL_BUNDLE_ID)";
 				PRODUCT_NAME = "Digital Wall";
 				REGISTER_APP_GROUPS = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;

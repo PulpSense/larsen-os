@@ -1,0 +1,5 @@
+// Public defaults. Override these in the ignored Signing.local.xcconfig file.
+DIGITAL_WALL_BUNDLE_ID = com.example.DigitalWall
+DIGITAL_WALL_APP_GROUP_ID = group.com.example.DigitalWall
+
+#include? "Signing.local.xcconfig"

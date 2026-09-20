@@ -22,13 +22,15 @@
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>com.santileoni.DigitalWall</string>
+			<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>digitalwall2</string>
 			</array>
 		</dict>
 	</array>
+	<key>DigitalWallAppGroupIdentifier</key>
+	<string>$(DIGITAL_WALL_APP_GROUP_ID)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSApplicationCategoryType</key>
