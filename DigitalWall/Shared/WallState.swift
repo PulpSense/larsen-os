@@ -387,13 +387,3 @@ enum WorldClockOrdering {
         return reordered
     }
 }
-
-enum WidgetContent {
-    static func visionImages(from state: WallState) -> [VisionImage] {
-        state.images
-    }
-
-    static func addingDeepWorkHour(_ date: Date, in state: WallState) -> WallState {
-        DeepWork.addingHour(on: date, to: state)
-    }
-}

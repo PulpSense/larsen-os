@@ -1,6 +1,4 @@
-import AppIntents
 import Foundation
-import WidgetKit
 
 enum WallPersistence {
     static func load() -> WallState {
@@ -20,23 +18,5 @@ enum WallPersistence {
 
     static func imageURL(for image: VisionImage) -> URL {
         AppConfiguration.imagesDirectoryURL.appendingPathComponent(image.fileName)
-    }
-}
-
-struct AddDeepWorkHourIntent: AppIntent {
-    static let title: LocalizedStringResource = "Add Deep Work Hour"
-    static let description = IntentDescription("Logs one hour of deep work for today.")
-    static let openAppWhenRun = false
-
-    func perform() async throws -> some IntentResult {
-        let state = WidgetContent.addingDeepWorkHour(Date(), in: WallPersistence.load())
-        try WallPersistence.save(state)
-        DistributedNotificationCenter.default().postNotificationName(
-            AppConfiguration.deepWorkHoursDidChangeNotification,
-            object: nil,
-            deliverImmediately: true
-        )
-        WidgetCenter.shared.reloadTimelines(ofKind: AppConfiguration.consistencyWidgetKind)
-        return .result()
     }
 }
