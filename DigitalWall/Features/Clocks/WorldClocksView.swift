@@ -7,8 +7,8 @@ struct WorldClocksView: View {
         VStack(alignment: .leading, spacing: 18) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("World clocks")
-                        .font(.largeTitle.bold())
+                    Text("World Clocks")
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
                     Text("A compact set of time zones that stays on your desktop.")
                         .foregroundStyle(.secondary)
                 }
@@ -18,7 +18,7 @@ struct WorldClocksView: View {
                 Button {
                     WorldClockDesktopPanelController.shared.present(store: store)
                 } label: {
-                    Label("Desktop panel", systemImage: "rectangle.on.rectangle")
+                    Label("Show on Desktop", systemImage: "rectangle.on.rectangle")
                 }
                 .buttonStyle(.borderedProminent)
             }
@@ -35,6 +35,7 @@ struct WorldClocksView: View {
             .buttonStyle(.bordered)
         }
         .padding(28)
+        .navigationTitle("World Clocks")
     }
 }
 

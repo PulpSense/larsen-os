@@ -78,16 +78,68 @@ enum WidgetContentTests {
         )
 
         let today = Date(timeIntervalSince1970: 1_788_048_000)
-        let completed = WidgetContent.toggling(today, in: state)
+        let oneHour = WidgetContent.addingDeepWorkHour(today, in: state)
         precondition(
-            completed.completedDays.contains(DayKey.string(from: today)),
-            "The first consistency toggle must mark today complete."
+            DeepWork.hours(on: today, in: oneHour.deepWorkHours) == 1
+                && !oneHour.completedDays.contains(DayKey.string(from: today)),
+            "The first logged hour must remain visible without winning the day."
         )
 
-        let uncompleted = WidgetContent.toggling(today, in: completed)
+        let fourHours = (0..<3).reduce(oneHour) { current, _ in
+            WidgetContent.addingDeepWorkHour(today, in: current)
+        }
         precondition(
-            !uncompleted.completedDays.contains(DayKey.string(from: today)),
-            "The second consistency toggle must unmark today."
+            DeepWork.hours(on: today, in: fourHours.deepWorkHours) == 4
+                && fourHours.completedDays.contains(DayKey.string(from: today)),
+            "The fourth logged hour must win the day."
+        )
+
+        let fifthHour = WidgetContent.addingDeepWorkHour(today, in: fourHours)
+        precondition(
+            DeepWork.hours(on: today, in: fifthHour.deepWorkHours) == 5
+                && fifthHour.completedDays.contains(DayKey.string(from: today)),
+            "Hours beyond the daily goal must be preserved without changing won-day status."
+        )
+
+        let restoredHours = try! JSONDecoder().decode(
+            WallState.self,
+            from: JSONEncoder().encode(fifthHour)
+        )
+        precondition(
+            DeepWork.hours(on: today, in: restoredHours.deepWorkHours) == 5,
+            "Deep-work hours must survive a persistence round trip."
+        )
+
+        precondition(
+            DeepWorkCelebrationMilestone.forHours(3) == nil,
+            "Hours below the goal must not trigger a full-screen celebration."
+        )
+        precondition(
+            DeepWorkCelebrationMilestone.forHours(4) == .dayWon
+                && DeepWorkCelebrationMilestone.forHours(5) == .bonusHour
+                && DeepWorkCelebrationMilestone.forHours(6) == .momentum
+                && DeepWorkCelebrationMilestone.forHours(7) == .unstoppable
+                && DeepWorkCelebrationMilestone.forHours(8) == .doubleGoal
+                && DeepWorkCelebrationMilestone.forHours(12) == .keepBuilding,
+            "Every post-goal hour must map to the intended escalating celebration."
+        )
+        let bonusConfiguration = DeepWorkCelebrationMilestone.bonusHour.configuration(hours: 5)
+        let continuingParticleCounts = (9...16).map {
+            DeepWorkCelebrationMilestone.keepBuilding.configuration(hours: $0).particleCount
+        }
+        precondition(
+            bonusConfiguration.title == "BONUS HOUR"
+                && bonusConfiguration.detail.contains("beyond four")
+                && zip(continuingParticleCounts, continuingParticleCounts.dropFirst())
+                    .allSatisfy { $0.0 != $0.1 },
+            "Celebration copy and bounded 9H+ intensity must stay centralized and keep evolving."
+        )
+
+        let legacyData = Data(#"{"completedDays":["2026-08-31"],"phrasesMarkdown":"Keep going."}"#.utf8)
+        let migratedLegacyState = try! JSONDecoder().decode(WallState.self, from: legacyData)
+        precondition(
+            migratedLegacyState.deepWorkHours["2026-08-31"] == DeepWork.dailyGoalHours,
+            "Existing completed days must migrate to four deep-work hours."
         )
 
         var streakCalendar = Calendar(identifier: .gregorian)
@@ -160,6 +212,6 @@ enum WidgetContentTests {
             "A clock must be draggable to the final position."
         )
 
-        print("PASS: wall content, consistency, and world-clock contracts")
+        print("PASS: wall content, deep-work, and world-clock contracts")
     }
 }

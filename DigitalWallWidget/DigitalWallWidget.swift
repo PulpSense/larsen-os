@@ -157,34 +157,44 @@ struct ConsistencyWidgetView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Label {
-                    Text(verbatim: "\(year) · \(completedCount) \(completedCount == 1 ? "day" : "days") marked")
-                } icon: {
-                    Image(systemName: "square.grid.3x3.fill")
+                VStack(alignment: .leading, spacing: 1) {
+                    Label("Deep Work Hours", systemImage: "brain.head.profile.fill")
+                        .font(.headline)
+                        .foregroundStyle(.indigo)
+                    Text(isTodayComplete ? "\(todayHours) h today · day won" : "\(todayHours) / 4 h today")
+                        .font(.caption2.weight(.medium))
+                        .foregroundStyle(.secondary)
+                        .contentTransition(.numericText())
                 }
-                    .font(.headline)
-                    .foregroundStyle(.indigo)
                 Spacer()
-                Button(intent: ToggleTodayV3Intent()) {
-                    Image(systemName: isTodayComplete ? "checkmark" : "plus")
-                        .font(.caption.bold())
-                        .foregroundStyle(.white)
-                        .frame(width: 26, height: 26)
-                        .background(isTodayComplete ? Color.green : Color.indigo, in: Circle())
-                        .contentTransition(.symbolEffect(.replace))
+                if todayHours >= DeepWork.dailyGoalHours - 1 {
+                    Link(destination: logHourURL) {
+                        hourButtonLabel
+                    }
+                    .buttonStyle(.plain)
+                    .help(todayHours == DeepWork.dailyGoalHours - 1
+                        ? "Log the winning fourth hour"
+                        : "Log and celebrate another deep work hour")
+                } else {
+                    Button(intent: AddDeepWorkHourIntent()) {
+                        hourButtonLabel
+                    }
+                    .buttonStyle(.plain)
+                    .help("Log one deep work hour")
                 }
-                .buttonStyle(.plain)
-                .help(isTodayComplete ? "Unmark today" : "Complete today")
             }
 
-            WidgetYearGrid(year: year, completedDays: entry.state.completedDays)
+            WidgetYearGrid(year: year, hoursByDay: entry.state.deepWorkHours)
                 .frame(maxHeight: .infinity)
 
             HStack {
-                Label(
-                    "\(currentStreak) \(currentStreak == 1 ? "day" : "days") streak",
-                    systemImage: "flame.fill"
-                )
+                HStack(spacing: 4) {
+                    Image(systemName: "flame.fill")
+                    Text("\(currentStreak) \(currentStreak == 1 ? "day" : "days") streak")
+                }
+                .foregroundStyle(Color.digitalWallFlame)
+                Spacer()
+                Text("\(completedCount) won \(completedCount == 1 ? "day" : "days")")
             }
             .font(.caption2.weight(.medium))
             .foregroundStyle(.secondary)
@@ -198,7 +208,24 @@ struct ConsistencyWidgetView: View {
     }
 
     private var isTodayComplete: Bool {
-        entry.state.completedDays.contains(DayKey.string(from: entry.date))
+        todayHours >= DeepWork.dailyGoalHours
+    }
+
+    private var todayHours: Int {
+        DeepWork.hours(on: entry.date, in: entry.state.deepWorkHours)
+    }
+
+    private var logHourURL: URL {
+        URL(string: "\(AppConfiguration.urlScheme)://log-deep-work-hour")!
+    }
+
+    private var hourButtonLabel: some View {
+        Image(systemName: "plus")
+            .font(.caption.bold())
+            .foregroundStyle(.white)
+            .frame(width: 26, height: 26)
+            .background(isTodayComplete ? Color.green : Color.indigo, in: Circle())
+            .symbolEffect(.bounce, value: todayHours)
     }
 
     private var currentStreak: Int {
@@ -211,7 +238,7 @@ struct ConsistencyWidgetView: View {
 
 private struct WidgetYearGrid: View {
     let year: Int
-    let completedDays: Set<String>
+    let hoursByDay: [String: Int]
 
     var body: some View {
         GeometryReader { proxy in
@@ -241,9 +268,8 @@ private struct WidgetYearGrid: View {
     }
 
     private func color(for date: Date) -> Color {
-        if completedDays.contains(DayKey.string(from: date)) { return .indigo }
         if date > Date() { return .secondary.opacity(0.06) }
-        return .secondary.opacity(0.18)
+        return DeepWorkVisuals.color(for: hoursByDay[DayKey.string(from: date), default: 0])
     }
 }
 
@@ -278,8 +304,8 @@ struct DigitalWallConsistencyWidget: Widget {
         StaticConfiguration(kind: kind, provider: WallTimelineProvider()) { entry in
             ConsistencyWidgetView(entry: entry)
         }
-        .configurationDisplayName("Year Consistency")
-        .description("See your year and check off today without opening the app.")
+        .configurationDisplayName("Deep Work Hours")
+        .description("Log deep work by the hour and build a streak of won days.")
         .supportedFamilies([.systemMedium, .systemLarge])
     }
 }

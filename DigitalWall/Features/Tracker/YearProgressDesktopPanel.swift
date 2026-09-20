@@ -64,9 +64,14 @@ private struct YearProgressDesktopPanelContent: View {
 
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
-                    Text(String(year))
-                        .font(.headline)
-                        .foregroundStyle(.indigo)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Year Elapsed")
+                            .font(.headline)
+                            .foregroundStyle(.indigo)
+                        Text(String(year))
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(.secondary)
+                    }
 
                     Spacer()
 

@@ -10,6 +10,7 @@ struct DigitalWallApp: App {
         Window("Digital Wall", id: "main") {
             DashboardView(store: store)
                 .frame(minWidth: 820, minHeight: 600)
+                .modifier(MainWindowRegistrationModifier())
                 .onAppear {
                     PhraseDesktopPanelController.shared.restoreIfEnabled(store: store)
                     VisionBoardDesktopPanelController.shared.restoreIfEnabled(store: store)
@@ -26,6 +27,24 @@ struct DigitalWallApp: App {
                         VisionBoardDesktopPanelController.shared.present(store: store)
                     case "show-consistency-panel":
                         ConsistencyDesktopPanelController.shared.present(store: store)
+                    case "log-deep-work-hour", "win-deep-work-day":
+                        store.reloadFromDisk()
+                        _ = store.addDeepWorkHour(on: Date())
+                        let hours = store.deepWorkHours(on: Date())
+                        if hours >= DeepWork.dailyGoalHours {
+                            let streak = ConsistencyStreak.current(
+                                completedDays: store.completedDays,
+                                through: Date(),
+                                calendar: TrackerCalendar.calendar
+                            )
+                            DeepWorkCelebrationPresenter.shared.present(
+                                hours: hours,
+                                streak: streak,
+                                hideApplicationOnDismiss: true
+                            )
+                        } else {
+                            NSApp.hide(nil)
+                        }
                     case "show-year-progress":
                         YearProgressDesktopPanelController.shared.present()
                     case "show-world-clocks":
@@ -51,16 +70,16 @@ struct DigitalWallApp: App {
                 }
                 .keyboardShortcut("v", modifiers: [.command, .shift])
 
-                Button("Show Desktop Phrase Panel") {
+                Button("Show Phrases on Desktop") {
                     PhraseDesktopPanelController.shared.present(store: store)
                 }
                 .keyboardShortcut("p", modifiers: [.command, .shift])
 
-                Button("New Desktop Phrase Window") {
+                Button("New Phrase Window") {
                     _ = PhraseDesktopPanelController.shared.createAndPresent(store: store)
                 }
 
-                Button("Show Desktop Vision Board") {
+                Button("Show Vision Board on Desktop") {
                     VisionBoardDesktopPanelController.shared.present(store: store)
                 }
 
@@ -68,15 +87,15 @@ struct DigitalWallApp: App {
                     VisionBoardDesktopPanelController.shared.createAndPresent(store: store)
                 }
 
-                Button("Show Desktop Consistency") {
+                Button("Show Deep Work Hours on Desktop") {
                     ConsistencyDesktopPanelController.shared.present(store: store)
                 }
 
-                Button("Show Year Progress") {
+                Button("Show Year Elapsed") {
                     YearProgressDesktopPanelController.shared.present()
                 }
 
-                Button("Show Desktop World Clocks") {
+                Button("Show World Clocks on Desktop") {
                     WorldClockDesktopPanelController.shared.present(store: store)
                 }
             }
@@ -84,6 +103,19 @@ struct DigitalWallApp: App {
 
         Settings {
             SettingsView()
+        }
+    }
+}
+
+private struct MainWindowRegistrationModifier: ViewModifier {
+    @Environment(\.openWindow) private var openWindow
+
+    func body(content: Content) -> some View {
+        content.onAppear {
+            let action = openWindow
+            MainAppWindowPresenter.shared.register {
+                action(id: "main")
+            }
         }
     }
 }
@@ -127,11 +159,7 @@ final class DigitalWallAppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        sender.setActivationPolicy(.regular)
-        sender.windows
-            .filter { !($0 is NSPanel) && $0.canBecomeMain }
-            .forEach { $0.makeKeyAndOrderFront(nil) }
-        sender.activate(ignoringOtherApps: true)
+        MainAppWindowPresenter.shared.present()
         return true
     }
 
@@ -158,7 +186,7 @@ private struct SettingsView: View {
         VStack(alignment: .leading, spacing: 18) {
             Label("Private by design", systemImage: "lock.fill")
                 .font(.headline)
-            Text("Your images, phrases, and consistency history stay on this Mac.")
+            Text("Your images, phrases, and deep-work history stay on this Mac.")
                 .foregroundStyle(.secondary)
 
             Divider()

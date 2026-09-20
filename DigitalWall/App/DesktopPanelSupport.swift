@@ -41,6 +41,7 @@ enum DesktopPanelSupport {
         frameAutosaveName: String,
         defaultAnchor: DesktopPanelAnchor = .topRight,
         defaultOffset: NSPoint = NSPoint(x: 36, y: 36),
+        acceptsFirstClick: Bool = false,
         @ViewBuilder content: () -> Content
     ) -> DesktopWallPanel {
         let screen = screenUnderPointer() ?? NSScreen.main
@@ -74,9 +75,12 @@ enum DesktopPanelSupport {
             backing: .buffered,
             defer: false
         )
-        panel.contentView = NSHostingView(
-            rootView: content().ignoresSafeArea(edges: .top)
-        )
+        let rootView = content().ignoresSafeArea(edges: .top)
+        if acceptsFirstClick {
+            panel.contentView = FirstClickHostingView(rootView: rootView)
+        } else {
+            panel.contentView = NSHostingView(rootView: rootView)
+        }
         panel.level = NSWindow.Level(
             rawValue: Int(CGWindowLevelForKey(.desktopIconWindow)) + 1
         )
@@ -834,6 +838,12 @@ final class DesktopWallPanel: NSPanel {
     }
 }
 
+private final class FirstClickHostingView<Content: View>: NSHostingView<Content> {
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
+        true
+    }
+}
+
 struct DesktopPanelBackground: View {
     var body: some View {
         RoundedRectangle(cornerRadius: 24, style: .continuous)
@@ -843,6 +853,38 @@ struct DesktopPanelBackground: View {
                     .stroke(.white.opacity(0.14), lineWidth: 1)
             }
             .ignoresSafeArea()
+    }
+}
+
+@MainActor
+final class MainAppWindowPresenter {
+    static let shared = MainAppWindowPresenter()
+
+    private var openMainWindow: (() -> Void)?
+
+    private init() {}
+
+    func register(openWindow: @escaping () -> Void) {
+        openMainWindow = openWindow
+    }
+
+    func present() {
+        NSApp.setActivationPolicy(.regular)
+
+        if let window = mainWindow {
+            window.makeKeyAndOrderFront(nil)
+        } else {
+            openMainWindow?()
+            DispatchQueue.main.async { [weak self] in
+                self?.mainWindow?.makeKeyAndOrderFront(nil)
+            }
+        }
+
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private var mainWindow: NSWindow? {
+        NSApp.windows.first { !($0 is NSPanel) && $0.canBecomeMain }
     }
 }
 
@@ -857,6 +899,12 @@ struct DesktopPanelControlMenu<Items: View>: View {
 
     var body: some View {
         Menu {
+            Button("Open Digital Wall", systemImage: "macwindow") {
+                MainAppWindowPresenter.shared.present()
+            }
+
+            Divider()
+
             items
         } label: {
             Image(systemName: "ellipsis")

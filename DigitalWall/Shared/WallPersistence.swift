@@ -23,14 +23,19 @@ enum WallPersistence {
     }
 }
 
-struct ToggleTodayV3Intent: AppIntent {
-    static let title: LocalizedStringResource = "Toggle Today's Work"
-    static let description = IntentDescription("Marks or unmarks today in Digital Wall.")
+struct AddDeepWorkHourIntent: AppIntent {
+    static let title: LocalizedStringResource = "Add Deep Work Hour"
+    static let description = IntentDescription("Logs one hour of deep work for today.")
     static let openAppWhenRun = false
 
     func perform() async throws -> some IntentResult {
-        let state = WidgetContent.toggling(Date(), in: WallPersistence.load())
+        let state = WidgetContent.addingDeepWorkHour(Date(), in: WallPersistence.load())
         try WallPersistence.save(state)
+        DistributedNotificationCenter.default().postNotificationName(
+            AppConfiguration.deepWorkHoursDidChangeNotification,
+            object: nil,
+            deliverImmediately: true
+        )
         WidgetCenter.shared.reloadTimelines(ofKind: AppConfiguration.consistencyWidgetKind)
         return .result()
     }
