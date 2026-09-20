@@ -5,9 +5,7 @@ import SwiftUI
 final class VisionBoardPresenter {
     static let shared = VisionBoardPresenter()
 
-    private var panel: VisionBoardPanel?
-    private var keyMonitor: Any?
-    private var hideApplicationOnDismiss = false
+    private let overlay = FullScreenOverlayController()
 
     private init() {}
 
@@ -33,61 +31,16 @@ final class VisionBoardPresenter {
 
     private func present(items: [PresentedVisionImage], hideApplicationOnDismiss: Bool) {
         guard !items.isEmpty else { return }
-        closePanel(hideApplication: false)
-
-        let screen = screenUnderPointer() ?? NSScreen.main
-        guard let screen else { return }
-
-        let content = ImmersiveVisionBoard(images: items) { [weak self] in
-            self?.dismiss()
-        }
-        let panel = VisionBoardPanel(
-            contentRect: screen.frame,
-            styleMask: [.borderless],
-            backing: .buffered,
-            defer: false
-        )
-        panel.contentView = NSHostingView(rootView: content)
-        panel.level = .screenSaver
-        panel.backgroundColor = .clear
-        panel.isOpaque = false
-        panel.hasShadow = false
-        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
-        panel.hidesOnDeactivate = false
-        panel.setFrame(screen.frame, display: true)
-        self.panel = panel
-        self.hideApplicationOnDismiss = hideApplicationOnDismiss
-        panel.makeKeyAndOrderFront(nil)
-
-        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { [weak self] event in
-            self?.dismiss()
-            return nil
+        overlay.present(
+            hideApplicationOnDismiss: hideApplicationOnDismiss,
+            dismissOnKeyDown: { _ in true }
+        ) { dismiss in
+            ImmersiveVisionBoard(images: items, dismiss: dismiss)
         }
     }
 
     func dismiss() {
-        closePanel(hideApplication: hideApplicationOnDismiss)
-    }
-
-    private func closePanel(hideApplication: Bool) {
-        if let keyMonitor {
-            NSEvent.removeMonitor(keyMonitor)
-            self.keyMonitor = nil
-        }
-        panel?.orderOut(nil)
-        panel = nil
-        hideApplicationOnDismiss = false
-
-        if hideApplication {
-            DispatchQueue.main.async {
-                NSApp.hide(nil)
-            }
-        }
-    }
-
-    private func screenUnderPointer() -> NSScreen? {
-        let pointer = NSEvent.mouseLocation
-        return NSScreen.screens.first { NSMouseInRect(pointer, $0.frame, false) }
+        overlay.dismiss()
     }
 }
 
@@ -95,11 +48,6 @@ private struct PresentedVisionImage: Identifiable {
     let id: String
     let url: URL
     let phrase: String
-}
-
-private final class VisionBoardPanel: NSPanel {
-    override var canBecomeKey: Bool { true }
-    override var canBecomeMain: Bool { false }
 }
 
 private struct ImmersiveVisionBoard: View {

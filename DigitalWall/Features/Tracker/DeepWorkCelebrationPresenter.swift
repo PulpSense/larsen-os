@@ -5,96 +5,35 @@ import SwiftUI
 final class DeepWorkCelebrationPresenter {
     static let shared = DeepWorkCelebrationPresenter()
 
-    private var panel: NSPanel?
-    private var keyMonitor: Any?
-    private var dismissalTask: Task<Void, Never>?
-    private var hideApplicationOnDismiss = false
+    private let overlay = FullScreenOverlayController()
 
     private init() {}
 
     func present(hours: Int, streak: Int, hideApplicationOnDismiss: Bool) {
-        dismiss(hideApplication: false)
-
         guard let milestone = DeepWorkCelebrationMilestone.forHours(hours) else { return }
 
-        let screen = screenUnderPointer() ?? NSScreen.main
-        guard let screen else { return }
-
-        let panel = CelebrationPanel(
-            contentRect: screen.frame,
-            styleMask: [.borderless],
-            backing: .buffered,
-            defer: false
-        )
-        let dismiss = { DeepWorkCelebrationPresenter.shared.dismiss() }
-        let celebration: AnyView
-        if milestone == .dayWon {
-            celebration = AnyView(DayWonCelebrationView(streak: streak, dismiss: dismiss))
-        } else {
-            celebration = AnyView(BonusHourCelebrationView(
-                hours: hours,
-                milestone: milestone,
-                dismiss: dismiss
-            ))
-        }
-        panel.contentView = NSHostingView(rootView: celebration)
-        panel.level = .screenSaver
-        panel.backgroundColor = .clear
-        panel.isOpaque = false
-        panel.hasShadow = false
-        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
-        panel.hidesOnDeactivate = false
-        panel.setFrame(screen.frame, display: true)
-        self.panel = panel
-        self.hideApplicationOnDismiss = hideApplicationOnDismiss
-        panel.makeKeyAndOrderFront(nil)
-
-        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { [weak self] event in
-            if event.keyCode == 53 || event.charactersIgnoringModifiers == " " {
-                self?.dismiss()
-                return nil
+        overlay.present(
+            hideApplicationOnDismiss: hideApplicationOnDismiss,
+            autoDismissAfter: .seconds(milestone == .dayWon ? 5.8 : 3.0),
+            dismissOnKeyDown: { event in
+                event.keyCode == 53 || event.charactersIgnoringModifiers == " "
             }
-            return event
-        }
-
-        dismissalTask = Task { [weak self] in
-            try? await Task.sleep(for: .seconds(milestone == .dayWon ? 5.8 : 3.0))
-            guard !Task.isCancelled else { return }
-            self?.dismiss()
+        ) { dismiss in
+            if milestone == .dayWon {
+                DayWonCelebrationView(streak: streak, dismiss: dismiss)
+            } else {
+                BonusHourCelebrationView(
+                    hours: hours,
+                    milestone: milestone,
+                    dismiss: dismiss
+                )
+            }
         }
     }
 
     func dismiss() {
-        dismiss(hideApplication: hideApplicationOnDismiss)
+        overlay.dismiss()
     }
-
-    private func dismiss(hideApplication: Bool) {
-        dismissalTask?.cancel()
-        dismissalTask = nil
-        if let keyMonitor {
-            NSEvent.removeMonitor(keyMonitor)
-            self.keyMonitor = nil
-        }
-        panel?.orderOut(nil)
-        panel = nil
-        hideApplicationOnDismiss = false
-
-        if hideApplication {
-            DispatchQueue.main.async {
-                NSApp.hide(nil)
-            }
-        }
-    }
-
-    private func screenUnderPointer() -> NSScreen? {
-        let pointer = NSEvent.mouseLocation
-        return NSScreen.screens.first { NSMouseInRect(pointer, $0.frame, false) }
-    }
-}
-
-private final class CelebrationPanel: NSPanel {
-    override var canBecomeKey: Bool { true }
-    override var canBecomeMain: Bool { false }
 }
 
 private struct DayWonCelebrationView: View {
@@ -554,21 +493,17 @@ private struct CelebrationSpark: Identifiable {
         let colors: [Color] = [Color.digitalWallFlame, .orange, .yellow, .white]
         return (0..<count).map { index in
             let angle = Double(index) / Double(max(1, count)) * Double.pi * 2
-            let distance = 0.12 + Double(fraction(index * 31)) * 0.26
+            let distance = 0.12 + Double(particleFraction(index * 31)) * 0.26
             return CelebrationSpark(
                 id: index,
                 endX: 0.5 + CGFloat(cos(angle) * distance),
                 endY: 0.64 + CGFloat(sin(angle) * distance * 0.62),
-                size: 3 + fraction(index * 19) * 7,
-                delay: Double(fraction(index * 17) * 0.22),
-                duration: Double(0.85 + fraction(index * 43) * 0.65),
+                size: 3 + particleFraction(index * 19) * 7,
+                delay: Double(particleFraction(index * 17) * 0.22),
+                duration: Double(0.85 + particleFraction(index * 43) * 0.65),
                 color: colors[index % colors.count]
             )
         }
-    }
-
-    private static func fraction(_ seed: Int) -> CGFloat {
-        CGFloat((seed * 37 + 17) % 101) / 100
     }
 }
 
@@ -588,24 +523,24 @@ private struct ConfettiPiece: Identifiable {
         let colors: [Color] = [.yellow, .pink, .cyan, .mint, .orange, .white, .purple]
         return (0..<count).map { index in
             let side: CGFloat = index.isMultiple(of: 2) ? 0.08 : 0.92
-            let horizontal = fraction(index * 47 + 11)
-            let vertical = fraction(index * 71 + 7)
+            let horizontal = particleFraction(index * 47 + 11)
+            let vertical = particleFraction(index * 71 + 7)
             return ConfettiPiece(
                 id: index,
                 startX: side,
                 endX: 0.05 + horizontal * 0.9,
                 endY: -0.12 + vertical * 1.05,
-                width: 5 + fraction(index * 19) * 8,
-                height: 10 + fraction(index * 31) * 13,
-                rotation: Double(240 + fraction(index * 59) * 1_080),
-                delay: Double(fraction(index * 23) * 0.32),
-                duration: Double(1.65 + fraction(index * 43) * 0.9),
+                width: 5 + particleFraction(index * 19) * 8,
+                height: 10 + particleFraction(index * 31) * 13,
+                rotation: Double(240 + particleFraction(index * 59) * 1_080),
+                delay: Double(particleFraction(index * 23) * 0.32),
+                duration: Double(1.65 + particleFraction(index * 43) * 0.9),
                 color: colors[index % colors.count]
             )
         }
     }
+}
 
-    private static func fraction(_ seed: Int) -> CGFloat {
-        CGFloat((seed * 37 + 17) % 101) / 100
-    }
+private func particleFraction(_ seed: Int) -> CGFloat {
+    CGFloat((seed * 37 + 17) % 101) / 100
 }

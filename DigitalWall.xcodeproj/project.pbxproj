@@ -29,6 +29,7 @@
 		A00100000000000000000014 /* DigitalWallWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = B00300000000000000000002 /* DigitalWallWidget.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		A00100000000000000000015 /* PhraseMarkdown.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00100000000000000000016 /* PhraseMarkdown.swift */; };
 		A00100000000000000000016 /* DeepWorkCelebrationPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00100000000000000000017 /* DeepWorkCelebrationPresenter.swift */; };
+		A00100000000000000000017 /* FullScreenOverlayController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00100000000000000000018 /* FullScreenOverlayController.swift */; };
 		A00200000000000000000001 /* DigitalWallWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00200000000000000000001 /* DigitalWallWidget.swift */; };
 		A00200000000000000000002 /* AppConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00100000000000000000004 /* AppConfiguration.swift */; };
 		A00200000000000000000003 /* WallState.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00100000000000000000005 /* WallState.swift */; };
@@ -59,6 +60,7 @@
 		B00100000000000000000015 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B00100000000000000000016 /* PhraseMarkdown.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhraseMarkdown.swift; sourceTree = "<group>"; };
 		B00100000000000000000017 /* DeepWorkCelebrationPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepWorkCelebrationPresenter.swift; sourceTree = "<group>"; };
+		B00100000000000000000018 /* FullScreenOverlayController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FullScreenOverlayController.swift; sourceTree = "<group>"; };
 		B00200000000000000000001 /* DigitalWallWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DigitalWallWidget.swift; sourceTree = "<group>"; };
 		B00200000000000000000002 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B00200000000000000000003 /* DigitalWallWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = DigitalWallWidget.entitlements; sourceTree = "<group>"; };
@@ -137,6 +139,7 @@
 				B00100000000000000000002 /* DashboardView.swift */,
 				B00100000000000000000003 /* WallStore.swift */,
 				B0010000000000000000000F /* DesktopPanelSupport.swift */,
+				B00100000000000000000018 /* FullScreenOverlayController.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -333,6 +336,7 @@
 				A00100000000000000000012 /* YearProgressDesktopPanel.swift in Sources */,
 				A00100000000000000000015 /* PhraseMarkdown.swift in Sources */,
 				A00100000000000000000016 /* DeepWorkCelebrationPresenter.swift in Sources */,
+				A00100000000000000000017 /* FullScreenOverlayController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

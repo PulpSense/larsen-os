@@ -47,6 +47,9 @@ enum AppConfiguration {
     static let visionBoardWidgetKind = "DigitalWallVisionBoardWidgetV5"
     static let consistencyWidgetKind = "DigitalWallConsistencyWidgetV3"
     static let phrasesWidgetKind = "DigitalWallEditablePhraseWidgetV3"
+    static let deepWorkHoursDidChangeNotification = Notification.Name(
+        "com.santileoni.DigitalWall.deepWorkHoursDidChange"
+    )
 
     static var sharedContainerURL: URL {
         if let groupURL = FileManager.default.containerURL(

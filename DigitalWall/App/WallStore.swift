@@ -8,10 +8,26 @@ import WidgetKit
 final class WallStore: ObservableObject {
     @Published private(set) var state: WallState
     @Published var lastError: String?
+    private var deepWorkHoursObserver: NSObjectProtocol?
 
     init() {
         state = WallPersistence.load()
         removeLegacyFolderAccess()
+        deepWorkHoursObserver = DistributedNotificationCenter.default().addObserver(
+            forName: AppConfiguration.deepWorkHoursDidChangeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.reloadDeepWorkHoursFromDisk()
+            }
+        }
+    }
+
+    deinit {
+        if let deepWorkHoursObserver {
+            DistributedNotificationCenter.default().removeObserver(deepWorkHoursObserver)
+        }
     }
 
     var images: [VisionImage] { state.images }
@@ -156,6 +172,12 @@ final class WallStore: ObservableObject {
 
     func reloadFromDisk() {
         state = WallPersistence.load()
+    }
+
+    private func reloadDeepWorkHoursFromDisk() {
+        let hours = WallPersistence.load().deepWorkHours
+        guard hours != state.deepWorkHours else { return }
+        state.deepWorkHours = hours
     }
 
     func updatePhrase(_ phrase: String, for id: UUID) {

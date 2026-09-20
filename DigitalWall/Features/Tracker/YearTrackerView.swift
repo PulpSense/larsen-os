@@ -149,7 +149,11 @@ struct YearTrackerView: View {
                 .frame(minWidth: 42)
 
             Button {
-                store.setDeepWorkHours(editingHours + 1, on: editingDate)
+                if calendar.isDateInToday(editingDate) {
+                    addHour(on: editingDate)
+                } else {
+                    store.setDeepWorkHours(editingHours + 1, on: editingDate)
+                }
             } label: {
                 Image(systemName: "plus")
             }

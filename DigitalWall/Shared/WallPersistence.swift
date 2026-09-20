@@ -31,6 +31,11 @@ struct AddDeepWorkHourIntent: AppIntent {
     func perform() async throws -> some IntentResult {
         let state = WidgetContent.addingDeepWorkHour(Date(), in: WallPersistence.load())
         try WallPersistence.save(state)
+        DistributedNotificationCenter.default().postNotificationName(
+            AppConfiguration.deepWorkHoursDidChangeNotification,
+            object: nil,
+            deliverImmediately: true
+        )
         WidgetCenter.shared.reloadTimelines(ofKind: AppConfiguration.consistencyWidgetKind)
         return .result()
     }
