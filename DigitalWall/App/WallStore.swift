@@ -163,6 +163,18 @@ final class WallStore: ObservableObject {
         persist()
     }
 
+    func updateImageDisplayMode(_ displayMode: VisionImageDisplayMode, for id: UUID) {
+        guard let index = state.images.firstIndex(where: { $0.id == id }) else { return }
+        state.images[index].displayMode = displayMode
+        persist()
+    }
+
+    func updateImageFocalPoint(_ focalPoint: VisionImageFocalPoint, for id: UUID) {
+        guard let index = state.images.firstIndex(where: { $0.id == id }) else { return }
+        state.images[index].focalPoint = focalPoint
+        persist()
+    }
+
     func removeImage(_ image: VisionImage) {
         state.images.removeAll { $0.id == image.id }
         for index in state.visionBoards.indices {

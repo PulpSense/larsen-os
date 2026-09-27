@@ -5,7 +5,7 @@ import SwiftUI
 final class WorldClockDesktopPanelController {
     static let shared = WorldClockDesktopPanelController()
 
-    private let enabledKey = "desktopWorldClockPanelEnabled"
+    private let visibility = DesktopWidgetVisibility.shared
     private let frameAutosaveName = "DigitalWallWorldClockDesktopPanelWidgetStyle"
     private let legacyFrameAutosaveName = "DigitalWallWorldClockDesktopPanel"
     private let positionMigrationKey = "worldClockPanelWidgetStylePositionMigrationV1"
@@ -14,13 +14,11 @@ final class WorldClockDesktopPanelController {
     private init() {}
 
     func restoreIfEnabled(store: WallStore) {
-        let defaults = UserDefaults.standard
-        let enabled = defaults.object(forKey: enabledKey) == nil || defaults.bool(forKey: enabledKey)
-        if enabled { present(store: store) }
+        if visibility.isVisible(.worldClocks) { present(store: store) }
     }
 
     func present(store: WallStore) {
-        UserDefaults.standard.set(true, forKey: enabledKey)
+        visibility.setVisible(true, for: .worldClocks)
 
         if let panel {
             panel.orderFrontRegardless()
@@ -35,10 +33,7 @@ final class WorldClockDesktopPanelController {
         ) {
             WorldClockDesktopPanelContent(
                 store: store,
-                setEditing: { [weak self] isEditing in
-                    self?.setEditing(isEditing)
-                },
-                close: { [weak self] in self?.dismiss() }
+                hide: { [weak self] in self?.dismiss() }
             )
         }
 
@@ -48,17 +43,9 @@ final class WorldClockDesktopPanelController {
     }
 
     func dismiss() {
-        UserDefaults.standard.set(false, forKey: enabledKey)
+        visibility.setVisible(false, for: .worldClocks)
         panel?.orderOut(nil)
         panel = nil
-    }
-
-    private func setEditing(_ isEditing: Bool) {
-        panel?.setContentEditing(isEditing)
-        if isEditing {
-            NSApp.activate(ignoringOtherApps: true)
-            panel?.makeKeyAndOrderFront(nil)
-        }
     }
 
     private func migratePositionIfNeeded(_ panel: DesktopWallPanel) {
@@ -92,34 +79,23 @@ private extension NSRect {
 
 private struct WorldClockDesktopPanelContent: View {
     @ObservedObject var store: WallStore
-    let setEditing: (Bool) -> Void
-    let close: () -> Void
+    let hide: () -> Void
     @State private var controlsVisible = false
-    @State private var isEditing = false
 
     var body: some View {
-        ZStack(alignment: .topTrailing) {
+        ZStack(alignment: .bottomTrailing) {
             DesktopPanelBackground()
 
-            if isEditing {
-                editor
-            } else {
-                clocks
-            }
+            clocks
 
-            if !isEditing {
-                DesktopPanelControlMenu(isVisible: controlsVisible) {
-                    Button("Edit clocks", systemImage: "pencil") {
-                        setEditing(true)
-                        isEditing = true
-                    }
-
-                    Divider()
-
-                    Button("Close", systemImage: "xmark", role: .destructive, action: close)
+            DesktopPanelControlMenu(isVisible: controlsVisible) {
+                Button("Edit clocks", systemImage: "pencil") {
+                    DashboardNavigation.shared.open(.clocks)
                 }
-                .padding(12)
+                Divider()
+                Button("Hide from desktop", systemImage: "eye.slash", action: hide)
             }
+            .padding(12)
         }
         .onHover { controlsVisible = $0 }
     }
@@ -220,31 +196,6 @@ private struct WorldClockDesktopPanelContent: View {
         }
     }
 
-    private var editor: some View {
-        VStack(spacing: 10) {
-            HStack {
-                Button {
-                    store.addWorldClock()
-                } label: {
-                    Label("Add", systemImage: "plus")
-                }
-
-                Spacer()
-
-                Button("Done") {
-                    setEditing(false)
-                    isEditing = false
-                }
-                .buttonStyle(.borderedProminent)
-            }
-
-            ScrollView {
-                WorldClockEditorRows(store: store, compact: true)
-            }
-        }
-        .buttonStyle(.bordered)
-        .padding(14)
-    }
 }
 
 private struct ClockTileTickFrame: View {

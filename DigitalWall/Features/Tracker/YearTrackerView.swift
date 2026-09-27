@@ -13,8 +13,32 @@ struct YearTrackerView: View {
                 header
                 stats
                 historyEditor
-                contributionGrid
-                legend
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Text("Activity")
+                            .font(.headline)
+                        Spacer()
+                        yearNavigation
+                    }
+                    contributionGrid
+                    legend
+                    Divider()
+                    HStack {
+                        Text("Desktop widget")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        DesktopWidgetVisibilityToggle(widget: .deepWork) { visible in
+                            if visible {
+                                ConsistencyDesktopPanelController.shared.present(store: store)
+                            } else {
+                                ConsistencyDesktopPanelController.shared.dismiss()
+                            }
+                        }
+                    }
+                }
+                .padding(16)
+                .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 20))
             }
             .padding(28)
         }
@@ -30,35 +54,34 @@ struct YearTrackerView: View {
                     .foregroundStyle(.secondary)
             }
             Spacer()
-            Button("Show on Desktop", systemImage: "rectangle.on.rectangle") {
-                ConsistencyDesktopPanelController.shared.present(store: store)
+            Button("Log 1 hour today", systemImage: "plus") {
+                displayedYear = calendar.component(.year, from: Date())
+                editingDate = Date()
+                addHour(on: Date())
             }
-            .buttonStyle(.bordered)
-
-            Button("Year Elapsed", systemImage: "chart.bar.fill") {
-                YearProgressDesktopPanelController.shared.present()
-            }
-            .buttonStyle(.bordered)
-
-            HStack(spacing: 4) {
-                Button { displayedYear -= 1 } label: {
-                    Image(systemName: "chevron.left")
-                }
-                .help("Previous year")
-                Text(String(displayedYear))
-                    .font(.headline.monospacedDigit())
-                    .frame(minWidth: 58)
-                Button { displayedYear += 1 } label: {
-                    Image(systemName: "chevron.right")
-                }
-                .disabled(displayedYear >= calendar.component(.year, from: Date()))
-                .help("Next year")
-            }
-            .buttonStyle(.borderless)
+            .buttonStyle(.borderedProminent)
         }
         .onChange(of: displayedYear) { _, _ in
             editingDate = editableDateRange.upperBound
         }
+    }
+
+    private var yearNavigation: some View {
+        HStack(spacing: 4) {
+            Button { displayedYear -= 1 } label: {
+                Image(systemName: "chevron.left")
+            }
+            .help("Previous year")
+            Text(String(displayedYear))
+                .font(.headline.monospacedDigit())
+                .frame(minWidth: 58)
+            Button { displayedYear += 1 } label: {
+                Image(systemName: "chevron.right")
+            }
+            .disabled(displayedYear >= calendar.component(.year, from: Date()))
+            .help("Next year")
+        }
+        .buttonStyle(.borderless)
     }
 
     private var stats: some View {
@@ -77,19 +100,19 @@ struct YearTrackerView: View {
     private var contributionGrid: some View {
         GeometryReader { proxy in
             let weeks = TrackerCalendar.weeks(in: displayedYear)
-            let spacing: CGFloat = 3
-            let horizontalPadding: CGFloat = 22
+            let spacing: CGFloat = 1
+            let horizontalPadding: CGFloat = 4
             let availableWidth = max(1, proxy.size.width - horizontalPadding * 2)
             let cell = min(
-                15,
+                13,
                 max(
-                    6,
+                    7,
                     (availableWidth - CGFloat(weeks.count - 1) * spacing)
                         / CGFloat(weeks.count)
                 )
             )
 
-            VStack(alignment: .leading, spacing: 7) {
+            VStack(alignment: .leading, spacing: 5) {
                 HStack(spacing: spacing) {
                     ForEach(Array(weeks.enumerated()), id: \.offset) { _, week in
                         Text(TrackerCalendar.monthLabel(for: week))
@@ -117,53 +140,64 @@ struct YearTrackerView: View {
             }
             .frame(width: availableWidth, alignment: .center)
             .padding(.horizontal, horizontalPadding)
-            .padding(.vertical, 22)
-            .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 20))
+            .padding(.vertical, 8)
         }
-        .frame(height: 190)
+        .frame(height: 120)
     }
 
     private var historyEditor: some View {
-        HStack(spacing: 12) {
-            Label("Edit deep work", systemImage: "calendar.badge.clock")
-                .font(.headline)
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Label("Editing \(editingDate.formatted(.dateTime.weekday(.wide).day().month(.wide)))", systemImage: "calendar.badge.clock")
+                    .font(.headline)
 
-            DatePicker(
-                "Day",
-                selection: $editingDate,
-                in: editableDateRange,
-                displayedComponents: .date
-            )
-            .labelsHidden()
+                Spacer()
 
-            Button {
-                store.setDeepWorkHours(max(0, editingHours - 1), on: editingDate)
-            } label: {
-                Image(systemName: "minus")
+                DatePicker(
+                    "Choose day",
+                    selection: $editingDate,
+                    in: editableDateRange,
+                    displayedComponents: .date
+                )
+                .labelsHidden()
             }
-            .buttonStyle(.bordered)
-            .disabled(editingHours == 0)
 
-            Text("\(editingHours) h")
-                .font(.headline.monospacedDigit())
-                .frame(minWidth: 42)
-
-            Button {
-                if calendar.isDateInToday(editingDate) {
-                    addHour(on: editingDate)
-                } else {
-                    store.setDeepWorkHours(editingHours + 1, on: editingDate)
+            HStack(spacing: 12) {
+                Button {
+                    store.setDeepWorkHours(max(0, editingHours - 1), on: editingDate)
+                } label: {
+                    Image(systemName: "minus")
                 }
-            } label: {
-                Image(systemName: "plus")
+                .buttonStyle(.bordered)
+                .disabled(editingHours == 0)
+                .help("Remove one hour from the selected day")
+
+                Text("\(editingHours) h")
+                    .font(.headline.monospacedDigit())
+                    .frame(minWidth: 42)
+
+                if !calendar.isDateInToday(editingDate) {
+                    Button {
+                        store.setDeepWorkHours(editingHours + 1, on: editingDate)
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                    .buttonStyle(.bordered)
+                    .help("Add one hour to the selected day")
+                }
+
+                Text(store.isCompleted(editingDate) ? "Day won" : progressLabel(for: editingHours))
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(store.isCompleted(editingDate) ? .green : .secondary)
+
+                Spacer()
+
+                if calendar.isDateInToday(editingDate) {
+                    Text("Use Log 1 hour today to add time")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
-            .buttonStyle(.borderedProminent)
-
-            Text(store.isCompleted(editingDate) ? "Day won" : progressLabel(for: editingHours))
-                .font(.caption.weight(.medium))
-                .foregroundStyle(store.isCompleted(editingDate) ? .green : .secondary)
-
-            Spacer()
         }
         .padding(14)
         .background(.background.secondary, in: RoundedRectangle(cornerRadius: 16))
@@ -173,6 +207,7 @@ struct YearTrackerView: View {
         let complete = store.isCompleted(date)
         let hours = store.deepWorkHours(on: date)
         let isToday = calendar.isDateInToday(date)
+        let isSelected = calendar.isDate(date, inSameDayAs: editingDate)
         let isFuture = date > Date()
 
         return Button {
@@ -181,7 +216,11 @@ struct YearTrackerView: View {
             RoundedRectangle(cornerRadius: max(2.5, size * 0.23), style: .continuous)
                 .fill(color(for: hours, isFuture: isFuture))
                 .overlay {
-                    if isToday {
+                    if isSelected {
+                        RoundedRectangle(cornerRadius: max(2.5, size * 0.23), style: .continuous)
+                            .strokeBorder(.white, lineWidth: 2)
+                            .shadow(color: .indigo.opacity(0.85), radius: 3)
+                    } else if isToday {
                         RoundedRectangle(cornerRadius: max(2.5, size * 0.23), style: .continuous)
                             .stroke(Color.primary.opacity(0.8), lineWidth: 1.5)
                     }
@@ -191,32 +230,32 @@ struct YearTrackerView: View {
         }
         .buttonStyle(.plain)
         .disabled(isFuture)
-        .help(date.formatted(date: .complete, time: .omitted) + " — \(hours) h" + (complete ? " · day won" : ""))
+        .help(date.formatted(date: .complete, time: .omitted) + " — \(hours) h" + (complete ? " · day won" : "") + (isSelected ? " · selected" : ""))
     }
 
     private var legend: some View {
-        HStack(spacing: 8) {
-            RoundedRectangle(cornerRadius: 3).fill(.secondary.opacity(0.18)).frame(width: 13, height: 13)
-            Text("0 h")
-            RoundedRectangle(cornerRadius: 3).fill(.indigo.opacity(0.28)).frame(width: 13, height: 13)
-            Text("1 h")
-            RoundedRectangle(cornerRadius: 3).fill(.indigo.opacity(0.48)).frame(width: 13, height: 13)
-            Text("2 h")
-            RoundedRectangle(cornerRadius: 3).fill(.indigo.opacity(0.72)).frame(width: 13, height: 13)
-            Text("3 h")
-            LinearGradient(
-                colors: [4, 6, 8, 10].map(DeepWorkVisuals.earnedColor(for:)),
-                startPoint: .leading,
-                endPoint: .trailing
-            )
-            .frame(width: 72, height: 13)
-            .clipShape(RoundedRectangle(cornerRadius: 3))
-            Text("4 h won → 10+ h")
-            Spacer()
-            if displayedYear == calendar.component(.year, from: Date()) {
-                Button("Log 1 hour") { addHour(on: Date()) }
-                    .buttonStyle(.borderedProminent)
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 8) {
+                RoundedRectangle(cornerRadius: 3).fill(.secondary.opacity(0.18)).frame(width: 13, height: 13)
+                Text("0 h")
+                RoundedRectangle(cornerRadius: 3).fill(.indigo.opacity(0.28)).frame(width: 13, height: 13)
+                Text("1 h")
+                RoundedRectangle(cornerRadius: 3).fill(.indigo.opacity(0.48)).frame(width: 13, height: 13)
+                Text("2 h")
+                RoundedRectangle(cornerRadius: 3).fill(.indigo.opacity(0.72)).frame(width: 13, height: 13)
+                Text("3 h")
+                LinearGradient(
+                    colors: [4, 6, 8, 10].map(DeepWorkVisuals.earnedColor(for:)),
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+                .frame(width: 72, height: 13)
+                .clipShape(RoundedRectangle(cornerRadius: 3))
+                Text("4+ h · day won")
+                Spacer()
             }
+
+            Text("On won days, green shifts toward gold as hours increase.")
         }
         .font(.caption)
         .foregroundStyle(.secondary)

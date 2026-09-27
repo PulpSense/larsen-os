@@ -21,14 +21,8 @@ final class PhraseDesktopPanelController {
     }
 
     func present(store: WallStore) {
-        guard let phraseID = store.desktopPhrases.first?.id else { return }
+        guard let phraseID = DashboardNavigation.shared.phraseID(in: store) else { return }
         present(phraseID: phraseID, store: store)
-    }
-
-    func createAndPresent(store: WallStore) -> UUID {
-        let phraseID = store.addDesktopPhrase()
-        present(phraseID: phraseID, store: store)
-        return phraseID
     }
 
     func present(
@@ -66,13 +60,7 @@ final class PhraseDesktopPanelController {
             PhraseDesktopPanelContent(
                 store: store,
                 phraseID: phraseID,
-                newPhrase: { [weak self] in
-                    _ = self?.createAndPresent(store: store)
-                },
-                beginEditing: { [weak self] in
-                    self?.activateForEditing(phraseID: phraseID)
-                },
-                close: { [weak self] in
+                hide: { [weak self] in
                     self?.dismiss(phraseID: phraseID, store: store)
                 }
             )
@@ -97,88 +85,36 @@ final class PhraseDesktopPanelController {
         store.removeDesktopPhrase(phraseID)
     }
 
-    private func activateForEditing(phraseID: UUID) {
-        NSApp.activate(ignoringOtherApps: true)
-        panels[phraseID]?.makeKeyAndOrderFront(nil)
-    }
 }
 
 private struct PhraseDesktopPanelContent: View {
     @ObservedObject var store: WallStore
     let phraseID: UUID
-    let newPhrase: () -> Void
-    let beginEditing: () -> Void
-    let close: () -> Void
+    let hide: () -> Void
     @State private var controlsVisible = false
-    @State private var isEditing = false
-    @FocusState private var editorFocused: Bool
 
     var body: some View {
-        ZStack(alignment: .topTrailing) {
+        ZStack(alignment: .bottomTrailing) {
             DesktopPanelBackground()
 
-            Group {
-                if isEditing {
-                    TextEditor(text: phrasesBinding)
-                        .font(.system(.body, design: .monospaced))
-                        .scrollContentBackground(.hidden)
-                        .focused($editorFocused)
-                        .padding(18)
-                } else {
-                    ScrollView {
-                        DesktopPhraseMarkdownView(markdown: phraseMarkdown)
-                            .frame(maxWidth: .infinity, alignment: .topLeading)
-                            .padding(18)
-                    }
-                    .scrollIndicators(.hidden)
-                }
+            ScrollView {
+                DesktopPhraseMarkdownView(markdown: store.desktopPhrase(phraseID)?.markdown ?? "")
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                    .padding(18)
             }
+            .scrollIndicators(.hidden)
 
-            Group {
-                if isEditing {
-                    Button("Done") {
-                        editorFocused = false
-                        isEditing = false
-                    }
-                    .buttonStyle(.borderedProminent)
-                } else {
-                    DesktopPanelControlMenu(isVisible: controlsVisible) {
-                        Button("Edit phrase", systemImage: "pencil") {
-                            beginEditing()
-                            isEditing = true
-                            DispatchQueue.main.async {
-                                editorFocused = true
-                            }
-                        }
-
-                        Button("New phrase window", systemImage: "plus", action: newPhrase)
-
-                        Divider()
-
-                        Button("Close", systemImage: "xmark", role: .destructive, action: close)
-                    }
+            DesktopPanelControlMenu(isVisible: controlsVisible) {
+                Button("Edit phrase", systemImage: "pencil") {
+                    DashboardNavigation.shared.editPhrase(phraseID)
                 }
+                Divider()
+                Button("Hide from desktop", systemImage: "eye.slash", action: hide)
             }
             .padding(12)
         }
         .onHover { controlsVisible = $0 }
-        .onExitCommand {
-            editorFocused = false
-            isEditing = false
-        }
     }
-
-    private var phrasesBinding: Binding<String> {
-        Binding(
-            get: { phraseMarkdown },
-            set: { store.updateDesktopPhrase(phraseID, markdown: $0) }
-        )
-    }
-
-    private var phraseMarkdown: String {
-        store.desktopPhrase(phraseID)?.markdown ?? ""
-    }
-
 }
 
 struct DesktopPhraseMarkdownView: View {

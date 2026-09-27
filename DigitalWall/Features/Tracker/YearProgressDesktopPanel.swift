@@ -5,19 +5,17 @@ import SwiftUI
 final class YearProgressDesktopPanelController {
     static let shared = YearProgressDesktopPanelController()
 
-    private let enabledKey = "desktopYearProgressPanelEnabled"
+    private let visibility = DesktopWidgetVisibility.shared
     private var panel: DesktopWallPanel?
 
     private init() {}
 
     func restoreIfEnabled() {
-        let defaults = UserDefaults.standard
-        let enabled = defaults.object(forKey: enabledKey) == nil || defaults.bool(forKey: enabledKey)
-        if enabled { present() }
+        if visibility.isVisible(.yearElapsed) { present() }
     }
 
     func present() {
-        UserDefaults.standard.set(true, forKey: enabledKey)
+        visibility.setVisible(true, for: .yearElapsed)
         if let panel {
             panel.orderFrontRegardless()
             return
@@ -40,26 +38,27 @@ final class YearProgressDesktopPanelController {
     }
 
     func dismiss() {
-        UserDefaults.standard.set(false, forKey: enabledKey)
+        visibility.setVisible(false, for: .yearElapsed)
         panel?.orderOut(nil)
         panel = nil
     }
 }
 
 private struct YearProgressDesktopPanelContent: View {
-    let close: () -> Void
+    let hide: () -> Void
     @State private var controlsVisible = false
 
     var body: some View {
-        TimelineView(.periodic(from: .now, by: 3600)) { timeline in
+        TimelineView(.periodic(from: .now, by: 60)) { timeline in
             content(now: timeline.date)
         }
     }
 
     private func content(now: Date) -> some View {
-        let year = TrackerCalendar.calendar.component(.year, from: now)
+        let progress = YearProgress(now: now, calendar: TrackerCalendar.calendar)
+        let year = progress.year
 
-        return ZStack {
+        return ZStack(alignment: .bottomTrailing) {
             DesktopPanelBackground()
 
             VStack(alignment: .leading, spacing: 10) {
@@ -75,43 +74,52 @@ private struct YearProgressDesktopPanelContent: View {
 
                     Spacer()
 
-                    Text(yearProgress(now: now), format: .percent.precision(.fractionLength(1)))
-                        .font(.title3.bold().monospacedDigit())
-
-                    DesktopPanelControlMenu(isVisible: controlsVisible) {
-                        Button("Close", systemImage: "xmark", role: .destructive, action: close)
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text(progress.fractionElapsed, format: .percent.precision(.fractionLength(1)))
+                            .font(.title3.bold().monospacedDigit())
+                        Text("\(progress.daysElapsed) of \(progress.daysElapsed + progress.daysRemaining) days")
+                            .font(.caption2.monospacedDigit())
+                            .foregroundStyle(.secondary)
                     }
+
                 }
 
-                YearProgressGrid(year: year, now: now)
+                YearProgressGrid(year: year, now: now, compactCrosses: true)
                     .frame(maxHeight: .infinity)
+
             }
             .padding(18)
+
+            DesktopPanelControlMenu(isVisible: controlsVisible) {
+                Button("Open Year Elapsed", systemImage: "chart.bar.fill") {
+                    DashboardNavigation.shared.open(.yearProgress)
+                }
+                Divider()
+                Button("Hide from desktop", systemImage: "eye.slash", action: hide)
+            }
+            .padding(12)
 
         }
         .onHover { controlsVisible = $0 }
     }
 
-    private func yearProgress(now: Date) -> Double {
-        let calendar = TrackerCalendar.calendar
-        guard let start = calendar.date(from: DateComponents(
-            year: calendar.component(.year, from: now),
-            month: 1,
-            day: 1
-        )), let end = calendar.date(byAdding: .year, value: 1, to: start) else { return 0 }
-        let elapsed = min(max(0, now.timeIntervalSince(start)), end.timeIntervalSince(start))
-        return elapsed / end.timeIntervalSince(start)
-    }
 }
 
-private struct YearProgressGrid: View {
+struct YearProgressGrid: View {
     let year: Int
     let now: Date
+    let compactCrosses: Bool
+
+    init(year: Int, now: Date, compactCrosses: Bool = false) {
+        self.year = year
+        self.now = now
+        self.compactCrosses = compactCrosses
+    }
 
     var body: some View {
         GeometryReader { proxy in
             let days = daysInYear
-            let spacing: CGFloat = 2
+            let spacing: CGFloat = compactCrosses ? 0.75 : 2
             let layout = bestLayout(
                 itemCount: days.count,
                 size: proxy.size,
@@ -127,15 +135,7 @@ private struct YearProgressGrid: View {
                 spacing: spacing
             ) {
                 ForEach(days, id: \.self) { date in
-                    RoundedRectangle(cornerRadius: max(1, layout.cell * 0.22))
-                        .fill(color(for: date))
-                        .overlay {
-                            if TrackerCalendar.calendar.isDate(date, inSameDayAs: now) {
-                                RoundedRectangle(cornerRadius: max(1, layout.cell * 0.22))
-                                    .stroke(.primary.opacity(0.72), lineWidth: 1)
-                            }
-                        }
-                        .frame(width: layout.cell, height: layout.cell)
+                    dayCell(date, size: layout.cell)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
@@ -166,11 +166,32 @@ private struct YearProgressGrid: View {
         }
     }
 
-    private func color(for date: Date) -> Color {
+    private func dayCell(_ date: Date, size: CGFloat) -> some View {
         let calendar = TrackerCalendar.calendar
         let today = calendar.startOfDay(for: now)
-        if date < today { return .indigo }
-        if calendar.isDate(date, inSameDayAs: now) { return .indigo.opacity(0.58) }
-        return .secondary.opacity(0.12)
+        let isPast = date < today
+        let isToday = calendar.isDate(date, inSameDayAs: now)
+        let corner = max(1, size * 0.22)
+
+        return ZStack {
+            if isPast {
+                Path { path in
+                    let inset = compactCrosses ? size * 0.08 : max(0.7, size * 0.18)
+                    path.move(to: CGPoint(x: inset, y: inset))
+                    path.addLine(to: CGPoint(x: size - inset, y: size - inset))
+                    path.move(to: CGPoint(x: size - inset, y: inset))
+                    path.addLine(to: CGPoint(x: inset, y: size - inset))
+                }
+                .stroke(Color.indigo.opacity(compactCrosses ? 0.78 : 1), style: StrokeStyle(lineWidth: max(0.75, size * (compactCrosses ? 0.10 : 0.12)), lineCap: .round))
+            } else {
+                RoundedRectangle(cornerRadius: corner)
+                    .fill(isToday ? Color.indigo.opacity(0.24) : Color.secondary.opacity(0.04))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: corner)
+                            .strokeBorder(isToday ? Color.indigo : Color.secondary.opacity(0.12), lineWidth: isToday ? 1.5 : 0.7)
+                    }
+            }
+        }
+        .frame(width: size, height: size)
     }
 }

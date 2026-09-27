@@ -16,23 +16,34 @@ struct WorldClocksView: View {
                 Spacer()
 
                 Button {
-                    WorldClockDesktopPanelController.shared.present(store: store)
+                    store.addWorldClock()
                 } label: {
-                    Label("Show on Desktop", systemImage: "rectangle.on.rectangle")
+                    Label("Add clock", systemImage: "plus")
                 }
                 .buttonStyle(.borderedProminent)
             }
 
-            ScrollView {
-                WorldClockEditorRows(store: store)
-            }
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Label("Clocks", systemImage: "globe.americas")
+                        .font(.headline)
+                    Spacer()
+                    DesktopWidgetVisibilityToggle(widget: .worldClocks) { visible in
+                        if visible {
+                            WorldClockDesktopPanelController.shared.present(store: store)
+                        } else {
+                            WorldClockDesktopPanelController.shared.dismiss()
+                        }
+                    }
+                }
 
-            Button {
-                store.addWorldClock()
-            } label: {
-                Label("Add clock", systemImage: "plus")
+                ScrollView {
+                    WorldClockEditorRows(store: store)
+                }
             }
-            .buttonStyle(.bordered)
+            .padding(16)
+            .frame(maxHeight: .infinity)
+            .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 16))
         }
         .padding(28)
         .navigationTitle("World Clocks")
@@ -41,12 +52,11 @@ struct WorldClocksView: View {
 
 struct WorldClockEditorRows: View {
     @ObservedObject var store: WallStore
-    var compact = false
 
     var body: some View {
-        LazyVStack(spacing: compact ? 8 : 12) {
+        LazyVStack(spacing: 12) {
             ForEach(store.worldClocks) { clock in
-                WorldClockEditorRow(store: store, clock: clock, compact: compact)
+                WorldClockEditorRow(store: store, clock: clock)
             }
         }
     }
@@ -55,7 +65,6 @@ struct WorldClockEditorRows: View {
 private struct WorldClockEditorRow: View {
     @ObservedObject var store: WallStore
     let clock: WorldClock
-    let compact: Bool
     @State private var isDropTarget = false
 
     var body: some View {
@@ -69,7 +78,7 @@ private struct WorldClockEditorRow: View {
 
             TextField("Label", text: nameBinding)
                 .textFieldStyle(.roundedBorder)
-                .frame(width: compact ? 105 : 180)
+                .frame(width: 180)
 
             Picker("Time zone", selection: timeZoneBinding) {
                 ForEach(TimeZone.knownTimeZoneIdentifiers, id: \.self) { identifier in
@@ -88,7 +97,7 @@ private struct WorldClockEditorRow: View {
             .buttonStyle(.plain)
             .help("Remove clock")
         }
-        .padding(compact ? 8 : 12)
+        .padding(12)
         .background(
             isDropTarget ? Color.indigo.opacity(0.18) : Color.secondary.opacity(0.08),
             in: RoundedRectangle(cornerRadius: 12)
@@ -105,7 +114,7 @@ private struct WorldClockEditorRow: View {
             store.moveWorldClock(
                 sourceID,
                 relativeTo: clock.id,
-                placeAfterDestination: location.y > (compact ? 24 : 30)
+                placeAfterDestination: location.y > 30
             )
             return true
         } isTargeted: {

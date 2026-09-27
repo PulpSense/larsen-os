@@ -5,19 +5,17 @@ import SwiftUI
 final class ConsistencyDesktopPanelController {
     static let shared = ConsistencyDesktopPanelController()
 
-    private let enabledKey = "desktopConsistencyPanelEnabled"
+    private let visibility = DesktopWidgetVisibility.shared
     private var panel: DesktopWallPanel?
 
     private init() {}
 
     func restoreIfEnabled(store: WallStore) {
-        let defaults = UserDefaults.standard
-        let enabled = defaults.object(forKey: enabledKey) == nil || defaults.bool(forKey: enabledKey)
-        if enabled { present(store: store) }
+        if visibility.isVisible(.deepWork) { present(store: store) }
     }
 
     func present(store: WallStore) {
-        UserDefaults.standard.set(true, forKey: enabledKey)
+        visibility.setVisible(true, for: .deepWork)
 
         if let panel {
             panel.orderFrontRegardless()
@@ -32,7 +30,7 @@ final class ConsistencyDesktopPanelController {
         ) {
             ConsistencyDesktopPanelContent(
                 store: store,
-                close: { [weak self] in
+                hide: { [weak self] in
                     self?.dismiss()
                 }
             )
@@ -43,7 +41,7 @@ final class ConsistencyDesktopPanelController {
     }
 
     func dismiss() {
-        UserDefaults.standard.set(false, forKey: enabledKey)
+        visibility.setVisible(false, for: .deepWork)
         panel?.orderOut(nil)
         panel = nil
     }
@@ -51,7 +49,7 @@ final class ConsistencyDesktopPanelController {
 
 private struct ConsistencyDesktopPanelContent: View {
     @ObservedObject var store: WallStore
-    let close: () -> Void
+    let hide: () -> Void
     @State private var controlsVisible = false
 
     var body: some View {
@@ -66,7 +64,7 @@ private struct ConsistencyDesktopPanelContent: View {
         let todayHours = store.deepWorkHours(on: now)
         let todayComplete = store.isCompleted(now)
 
-        return ZStack(alignment: .topTrailing) {
+        return ZStack {
             DesktopPanelBackground()
 
             VStack(alignment: .leading, spacing: 10) {
@@ -96,9 +94,6 @@ private struct ConsistencyDesktopPanelContent: View {
                     .buttonStyle(.plain)
                     .help("Log one deep work hour")
 
-                    DesktopPanelControlMenu(isVisible: controlsVisible) {
-                        Button("Close", systemImage: "xmark", role: .destructive, action: close)
-                    }
                 }
 
                 DesktopConsistencyYearGrid(
@@ -116,6 +111,13 @@ private struct ConsistencyDesktopPanelContent: View {
                     .foregroundStyle(Color.digitalWallFlame)
                     Spacer()
                     Text("\(year) · \(wonDays) won \(wonDays == 1 ? "day" : "days")")
+                    DesktopPanelControlMenu(isVisible: controlsVisible) {
+                        Button("Edit deep work", systemImage: "pencil") {
+                            DashboardNavigation.shared.open(.tracker)
+                        }
+                        Divider()
+                        Button("Hide from desktop", systemImage: "eye.slash", action: hide)
+                    }
                 }
                 .font(.caption.weight(.medium))
                 .foregroundStyle(.secondary)

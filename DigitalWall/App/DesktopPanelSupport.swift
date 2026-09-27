@@ -888,6 +888,21 @@ final class MainAppWindowPresenter {
     }
 }
 
+struct DesktopWidgetVisibilityToggle: View {
+    @ObservedObject private var visibility = DesktopWidgetVisibility.shared
+    let widget: DesktopWidgetVisibility.Widget
+    let setVisibility: (Bool) -> Void
+
+    var body: some View {
+        Toggle("Show on desktop", isOn: Binding(
+            get: { visibility.isVisible(widget) },
+            set: setVisibility
+        ))
+        .toggleStyle(.switch)
+        .fixedSize()
+    }
+}
+
 struct DesktopPanelControlMenu<Items: View>: View {
     let isVisible: Bool
     private let items: Items
@@ -909,7 +924,7 @@ struct DesktopPanelControlMenu<Items: View>: View {
         } label: {
             Image(systemName: "ellipsis")
                 .font(.caption.bold())
-                .frame(width: 24, height: 24)
+                .frame(width: 20, height: 20)
                 .background(.ultraThinMaterial, in: Circle())
         }
         .menuStyle(.borderlessButton)
