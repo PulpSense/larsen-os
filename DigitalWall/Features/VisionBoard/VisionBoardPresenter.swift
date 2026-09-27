@@ -15,7 +15,9 @@ final class VisionBoardPresenter {
                 PresentedVisionImage(
                     id: $0.id.uuidString,
                     url: WallPersistence.imageURL(for: $0),
-                    phrase: $0.phrase
+                    phrase: $0.phrase,
+                    displayMode: $0.displayMode,
+                    focalPoint: $0.focalPoint
                 )
             },
             hideApplicationOnDismiss: hideApplicationOnDismiss
@@ -48,6 +50,8 @@ private struct PresentedVisionImage: Identifiable {
     let id: String
     let url: URL
     let phrase: String
+    var displayMode: VisionImageDisplayMode = .fit
+    var focalPoint: VisionImageFocalPoint = .center
 }
 
 private struct ImmersiveVisionBoard: View {
@@ -90,45 +94,22 @@ private struct ImmersiveVisionBoard: View {
     }
 
     private func visionCard(_ image: PresentedVisionImage, index: Int, canvas: CGSize) -> some View {
-        let featuredLayouts: [(CGFloat, CGFloat, CGFloat, CGFloat)] = [
-            (0.22, 0.27, -4, 0.25), (0.50, 0.22, 3, 0.23),
-            (0.78, 0.28, -2, 0.25), (0.31, 0.62, 2, 0.24),
-            (0.66, 0.61, -3, 0.26), (0.10, 0.70, 4, 0.19),
-            (0.88, 0.68, -4, 0.18), (0.50, 0.47, 1, 0.20)
-        ]
-        let layout: (CGFloat, CGFloat, CGFloat, CGFloat)
-        let maximumCardHeight: CGFloat
-        if images.count <= featuredLayouts.count {
-            layout = featuredLayouts[index]
-            maximumCardHeight = canvas.height * 0.32
-        } else {
-            let columns = Int(ceil(sqrt(Double(images.count))))
-            let rows = Int(ceil(Double(images.count) / Double(columns)))
-            let row = index / columns
-            let column = index % columns
-            let imagesInRow = min(columns, images.count - row * columns)
-            let horizontalOffset = CGFloat(columns - imagesInRow) / 2
-            let x = (CGFloat(column) + horizontalOffset + 0.5) / CGFloat(columns)
-            let y = (CGFloat(row) + 0.5) / CGFloat(rows)
-            let rotation = CGFloat((index % 3) - 1) * 1.5
-            layout = (
-                0.08 + x * 0.84,
-                0.08 + y * 0.76,
-                rotation,
-                min(0.22, 0.78 / CGFloat(columns))
-            )
-            maximumCardHeight = canvas.height * min(0.24, 0.68 / CGFloat(rows))
-        }
-        let width = min(max(canvas.width * layout.3, 190), 420)
+        let layout = VisionBoardCardLayout(index: index, imageCount: images.count, canvas: canvas)
+        let width = layout.imageSize.width
+        let maximumCardHeight = layout.imageSize.height
 
         return VStack(spacing: 10) {
             Group {
                 if let nsImage = NSImage(contentsOf: image.url) {
-                    Image(nsImage: nsImage).resizable().scaledToFit()
+                    VisionImageContentView(nsImage: nsImage, displayMode: image.displayMode, focalPoint: image.focalPoint)
                 } else {
                     Color.secondary.opacity(0.12)
                 }
             }
+                .frame(
+                    width: image.displayMode == .fill ? width : nil,
+                    height: image.displayMode == .fill ? maximumCardHeight : nil
+                )
                 .frame(maxWidth: width, maxHeight: maximumCardHeight)
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
 
@@ -143,8 +124,8 @@ private struct ImmersiveVisionBoard: View {
         .padding(10)
         .background(.black.opacity(0.26), in: RoundedRectangle(cornerRadius: 18))
         .shadow(color: .black.opacity(0.4), radius: 24, y: 12)
-        .rotationEffect(.degrees(layout.2))
-        .position(x: canvas.width * layout.0, y: canvas.height * layout.1)
+        .rotationEffect(.degrees(layout.rotation))
+        .position(layout.position)
         .scaleEffect(appeared ? 1 : 0.7)
         .opacity(appeared ? 1 : 0)
         .animation(

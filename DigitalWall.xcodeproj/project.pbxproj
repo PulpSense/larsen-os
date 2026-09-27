@@ -29,6 +29,11 @@
 		A00100000000000000000015 /* PhraseMarkdown.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00100000000000000000016 /* PhraseMarkdown.swift */; };
 		A00100000000000000000016 /* DeepWorkCelebrationPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00100000000000000000017 /* DeepWorkCelebrationPresenter.swift */; };
 		A00100000000000000000017 /* FullScreenOverlayController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00100000000000000000018 /* FullScreenOverlayController.swift */; };
+		A00100000000000000000020 /* YearProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00100000000000000000020 /* YearProgressView.swift */; };
+		A00100000000000000000021 /* YearProgress.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00100000000000000000021 /* YearProgress.swift */; };
+		A00100000000000000000022 /* VisionImageCropEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00100000000000000000022 /* VisionImageCropEditor.swift */; };
+		A00100000000000000000023 /* VisionImageCrop.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00100000000000000000023 /* VisionImageCrop.swift */; };
+		A00100000000000000000024 /* DesktopWidgetVisibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00100000000000000000024 /* DesktopWidgetVisibility.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -58,6 +63,11 @@
 		B00100000000000000000018 /* FullScreenOverlayController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FullScreenOverlayController.swift; sourceTree = "<group>"; };
 		B00100000000000000000019 /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config/Signing.xcconfig; sourceTree = SOURCE_ROOT; };
 		B00300000000000000000001 /* Digital Wall.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Digital Wall.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		B00100000000000000000020 /* YearProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YearProgressView.swift; sourceTree = "<group>"; };
+		B00100000000000000000021 /* YearProgress.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YearProgress.swift; sourceTree = "<group>"; };
+		B00100000000000000000022 /* VisionImageCropEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisionImageCropEditor.swift; sourceTree = "<group>"; };
+		B00100000000000000000023 /* VisionImageCrop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisionImageCrop.swift; sourceTree = "<group>"; };
+		B00100000000000000000024 /* DesktopWidgetVisibility.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesktopWidgetVisibility.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -109,7 +119,10 @@
 			isa = PBXGroup;
 			children = (
 				B00100000000000000000004 /* AppConfiguration.swift */,
+				B00100000000000000000024 /* DesktopWidgetVisibility.swift */,
 				B00100000000000000000005 /* WallState.swift */,
+				B00100000000000000000023 /* VisionImageCrop.swift */,
+				B00100000000000000000021 /* YearProgress.swift */,
 				B00100000000000000000006 /* WallPersistence.swift */,
 			);
 			path = Shared;
@@ -131,6 +144,7 @@
 			children = (
 				B00100000000000000000007 /* LocalImageView.swift */,
 				B00100000000000000000008 /* VisionBoardEditorView.swift */,
+				B00100000000000000000022 /* VisionImageCropEditor.swift */,
 				B00100000000000000000009 /* VisionBoardPresenter.swift */,
 				B00100000000000000000010 /* VisionBoardDesktopPanel.swift */,
 			);
@@ -143,6 +157,7 @@
 				B0010000000000000000000A /* YearTrackerView.swift */,
 				B00100000000000000000011 /* ConsistencyDesktopPanel.swift */,
 				B00100000000000000000014 /* YearProgressDesktopPanel.swift */,
+				B00100000000000000000020 /* YearProgressView.swift */,
 				B00100000000000000000017 /* DeepWorkCelebrationPresenter.swift */,
 			);
 			path = Tracker;
@@ -248,10 +263,13 @@
 				A00100000000000000000002 /* DashboardView.swift in Sources */,
 				A00100000000000000000003 /* WallStore.swift in Sources */,
 				A00100000000000000000004 /* AppConfiguration.swift in Sources */,
+				A00100000000000000000024 /* DesktopWidgetVisibility.swift in Sources */,
 				A00100000000000000000005 /* WallState.swift in Sources */,
 				A00100000000000000000006 /* WallPersistence.swift in Sources */,
 				A00100000000000000000007 /* LocalImageView.swift in Sources */,
 				A00100000000000000000008 /* VisionBoardEditorView.swift in Sources */,
+				A00100000000000000000023 /* VisionImageCrop.swift in Sources */,
+				A00100000000000000000022 /* VisionImageCropEditor.swift in Sources */,
 				A00100000000000000000009 /* VisionBoardPresenter.swift in Sources */,
 				A0010000000000000000000A /* YearTrackerView.swift in Sources */,
 				A0010000000000000000000B /* PhrasesView.swift in Sources */,
@@ -262,6 +280,8 @@
 				A00100000000000000000010 /* WorldClocksView.swift in Sources */,
 				A00100000000000000000011 /* WorldClockDesktopPanel.swift in Sources */,
 				A00100000000000000000012 /* YearProgressDesktopPanel.swift in Sources */,
+				A00100000000000000000021 /* YearProgress.swift in Sources */,
+				A00100000000000000000020 /* YearProgressView.swift in Sources */,
 				A00100000000000000000015 /* PhraseMarkdown.swift in Sources */,
 				A00100000000000000000016 /* DeepWorkCelebrationPresenter.swift in Sources */,
 				A00100000000000000000017 /* FullScreenOverlayController.swift in Sources */,

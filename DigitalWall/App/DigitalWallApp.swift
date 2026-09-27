@@ -50,7 +50,7 @@ struct DigitalWallApp: App {
                     case "show-world-clocks":
                         WorldClockDesktopPanelController.shared.present(store: store)
                     default:
-                        let boardID = store.visionBoards.first?.id
+                        let boardID = DashboardNavigation.shared.boardID(in: store)
                         VisionBoardPresenter.shared.present(
                             images: boardID.map { store.images(for: $0) } ?? [],
                             hideApplicationOnDismiss: true
@@ -62,36 +62,44 @@ struct DigitalWallApp: App {
         .defaultSize(width: 960, height: 680)
         .commands {
             CommandGroup(after: .newItem) {
-                Button("Show Vision Board") {
-                    let boardID = store.visionBoards.first?.id
+                Button("New Vision Board") {
+                    let id = store.addVisionBoard()
+                    VisionBoardDesktopPanelController.shared.present(boardID: id, store: store)
+                    DashboardNavigation.shared.editBoard(id)
+                }
+
+                Button("New Phrase") {
+                    let id = store.addDesktopPhrase()
+                    PhraseDesktopPanelController.shared.present(phraseID: id, store: store)
+                    DashboardNavigation.shared.editPhrase(id)
+                }
+
+                Divider()
+
+                Button("Open Selected Vision Board") {
+                    let boardID = DashboardNavigation.shared.boardID(in: store)
                     VisionBoardPresenter.shared.present(
                         images: boardID.map { store.images(for: $0) } ?? []
                     )
                 }
                 .keyboardShortcut("v", modifiers: [.command, .shift])
 
-                Button("Show Phrases on Desktop") {
-                    PhraseDesktopPanelController.shared.present(store: store)
-                }
-                .keyboardShortcut("p", modifiers: [.command, .shift])
+                Divider()
 
-                Button("New Phrase Window") {
-                    _ = PhraseDesktopPanelController.shared.createAndPresent(store: store)
-                }
-
-                Button("Show Vision Board on Desktop") {
+                Button("Show Selected Vision Board on Desktop") {
                     VisionBoardDesktopPanelController.shared.present(store: store)
                 }
 
-                Button("New Vision Board") {
-                    VisionBoardDesktopPanelController.shared.createAndPresent(store: store)
+                Button("Show Selected Phrase on Desktop") {
+                    PhraseDesktopPanelController.shared.present(store: store)
                 }
+                .keyboardShortcut("p", modifiers: [.command, .shift])
 
                 Button("Show Deep Work Hours on Desktop") {
                     ConsistencyDesktopPanelController.shared.present(store: store)
                 }
 
-                Button("Show Year Elapsed") {
+                Button("Show Year Elapsed on Desktop") {
                     YearProgressDesktopPanelController.shared.present()
                 }
 

@@ -53,9 +53,17 @@ On its first installed launch, Digital Wall enables **Open Digital Wall at login
 
 Use **Edit deep work** to correct or backfill a selected date. Incrementing today from that control still celebrates a newly reached milestone; historical corrections remain quiet. Reduce Motion keeps the milestone message visible while removing the large movement effects.
 
+### Track the year
+
+Open **Year Elapsed** in the app to see the current year’s progress, days elapsed and remaining, and the same day grid shown on the desktop. Use **Show on desktop** to show or hide its panel. The panel’s **Open Year Elapsed** action opens this section directly.
+
 ### Use the vision board
 
 - Add images on the **Vision Boards** screen and optionally give each image a short caption.
+- Choose **Fit** to show an entire image or **Fill** to crop it to its frame. Each image remembers its choice for the full board and desktop preview.
+- For Fill images, use **Adjust crop** to drag the image into position, then **Save crop**. **Reset to center** restores a centered crop. The original image is preserved.
+- Click an image’s **Save to Downloads** button to export a copy in its original format. Existing files are preserved.
+- Use **Save all images** beside the board name to copy the selected board’s images into a new folder in Downloads, including images hidden from desktop previews.
 - Click **Show board**, press **Shift-Command-V**, or click the floating vision-board panel to open the board full screen on the display under the pointer.
 - Press any key or click anywhere to dismiss it.
 - Create multiple boards in the app and choose which images remain visible on each floating vision-board panel.
@@ -64,7 +72,11 @@ Use **Edit deep work** to correct or backfill a selected date. Incrementing toda
 
 - Show Deep Work Hours, Vision Boards, Phrases, Year Elapsed, or World Clocks as floating desktop panels from the app.
 - Drag panels into position. They keep a small gap from one another and remember their placement.
-- Hover over a panel and open its **•••** menu to edit it, close it, or return to the main Digital Wall app.
+- Hover over a panel and open its **•••** menu. **Edit** opens the corresponding editor in Digital Wall, with that phrase or board selected.
+- Create phrases and vision boards, add clocks, and manage their content in the app. Desktop panels update as you edit.
+- Use **Show on desktop** in Deep Work Hours, Year Elapsed, or World Clocks to show or hide its panel. These toggles stay synchronized with widget menus and remember the setting after relaunch.
+- **Hide from desktop** in any widget menu hides the panel without deleting its content. Log a deep work hour directly with the panel’s **+** button.
+- Global Show commands use the selected board or phrase, falling back to the first available item.
 
 ## Data and privacy
 

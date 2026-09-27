@@ -1,14 +1,66 @@
 import Foundation
 
+enum VisionImageDisplayMode: String, Codable, CaseIterable, Sendable {
+    case fit
+    case fill
+}
+
+struct VisionImageFocalPoint: Codable, Hashable, Sendable {
+    let x: Double
+    let y: Double
+
+    static let center = VisionImageFocalPoint(x: 0.5, y: 0.5)
+
+    init(x: Double, y: Double) {
+        self.x = x.isFinite ? min(max(x, 0), 1) : 0.5
+        self.y = y.isFinite ? min(max(y, 0), 1) : 0.5
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case x, y
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            x: try container.decodeIfPresent(Double.self, forKey: .x) ?? 0.5,
+            y: try container.decodeIfPresent(Double.self, forKey: .y) ?? 0.5
+        )
+    }
+}
+
 struct VisionImage: Codable, Identifiable, Hashable, Sendable {
     let id: UUID
     var fileName: String
     var phrase: String
+    var displayMode: VisionImageDisplayMode
+    var focalPoint: VisionImageFocalPoint
 
-    init(id: UUID = UUID(), fileName: String, phrase: String = "") {
+    init(
+        id: UUID = UUID(),
+        fileName: String,
+        phrase: String = "",
+        displayMode: VisionImageDisplayMode = .fit,
+        focalPoint: VisionImageFocalPoint = .center
+    ) {
         self.id = id
         self.fileName = fileName
         self.phrase = phrase
+        self.displayMode = displayMode
+        self.focalPoint = focalPoint
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, fileName, phrase, displayMode, focalPoint
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        fileName = try container.decode(String.self, forKey: .fileName)
+        phrase = try container.decodeIfPresent(String.self, forKey: .phrase) ?? ""
+        displayMode = try container.decodeIfPresent(VisionImageDisplayMode.self, forKey: .displayMode) ?? .fit
+        focalPoint = try container.decodeIfPresent(VisionImageFocalPoint.self, forKey: .focalPoint) ?? .center
     }
 }
 
