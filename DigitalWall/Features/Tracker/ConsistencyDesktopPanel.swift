@@ -23,10 +23,11 @@ final class ConsistencyDesktopPanelController {
         }
 
         let panel = DesktopPanelSupport.makePanel(
-            initialSize: NSSize(width: 680, height: 300),
-            minimumSize: NSSize(width: 460, height: 220),
+            initialSize: NSSize(width: 680, height: 220),
+            minimumSize: NSSize(width: 550, height: 178),
             frameAutosaveName: "DigitalWallConsistencyDesktopPanel",
-            defaultOffset: NSPoint(x: 500, y: 36)
+            defaultOffset: NSPoint(x: 500, y: 36),
+            locksAspectRatio: true
         ) {
             ConsistencyDesktopPanelContent(
                 store: store,
@@ -68,32 +69,32 @@ private struct ConsistencyDesktopPanelContent: View {
             DesktopPanelBackground()
 
             VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 1) {
+                ZStack {
+                    Text(todayComplete ? "\(todayHours) h today · day won" : "\(todayHours) / 4 h today")
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(.secondary)
+                        .contentTransition(.numericText())
+
+                    HStack {
                         Text("Deep Work Hours")
                             .font(.headline)
                             .foregroundStyle(.indigo)
-                        Text(todayComplete ? "\(todayHours) h today · day won" : "\(todayHours) / 4 h today")
-                            .font(.caption.weight(.medium))
-                            .foregroundStyle(.secondary)
-                            .contentTransition(.numericText())
+
+                        Spacer()
+
+                        Button {
+                            addHour(now: now)
+                        } label: {
+                            Image(systemName: "plus")
+                                .font(.caption.bold())
+                                .foregroundStyle(.white)
+                                .frame(width: 28, height: 28)
+                                .background(todayComplete ? Color.green : Color.indigo, in: Circle())
+                                .contentTransition(.symbolEffect(.replace))
+                        }
+                        .buttonStyle(.plain)
+                        .help("Log one deep work hour")
                     }
-
-                    Spacer()
-
-                    Button {
-                        addHour(now: now)
-                    } label: {
-                        Image(systemName: "plus")
-                            .font(.caption.bold())
-                            .foregroundStyle(.white)
-                            .frame(width: 28, height: 28)
-                            .background(todayComplete ? Color.green : Color.indigo, in: Circle())
-                            .contentTransition(.symbolEffect(.replace))
-                    }
-                    .buttonStyle(.plain)
-                    .help("Log one deep work hour")
-
                 }
 
                 DesktopConsistencyYearGrid(
@@ -110,7 +111,7 @@ private struct ConsistencyDesktopPanelContent: View {
                     }
                     .foregroundStyle(Color.digitalWallFlame)
                     Spacer()
-                    Text("\(year) · \(wonDays) won \(wonDays == 1 ? "day" : "days")")
+                    Text("\(String(year)) · \(wonDays) won \(wonDays == 1 ? "day" : "days")")
                     DesktopPanelControlMenu(isVisible: controlsVisible) {
                         Button("Edit deep work", systemImage: "pencil") {
                             DashboardNavigation.shared.open(.tracker)

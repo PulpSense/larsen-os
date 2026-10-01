@@ -189,6 +189,7 @@ final class DigitalWallAppDelegate: NSObject, NSApplicationDelegate {
 
 private struct SettingsView: View {
     @StateObject private var launchAtLogin = LaunchAtLoginController.shared
+    @AppStorage("yearProgressVisualization") private var yearProgressVisualization = YearProgressVisualization.ring.rawValue
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -196,6 +197,14 @@ private struct SettingsView: View {
                 .font(.headline)
             Text("Your images, phrases, and deep-work history stay on this Mac.")
                 .foregroundStyle(.secondary)
+
+            Divider()
+
+            Picker("Year Elapsed visualization", selection: $yearProgressVisualization) {
+                ForEach(YearProgressVisualization.allCases) { option in
+                    Text(option.title).tag(option.rawValue)
+                }
+            }
 
             Divider()
 

@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct YearProgressView: View {
+    @AppStorage("yearProgressVisualization") private var visualization = YearProgressVisualization.ring.rawValue
+
     var body: some View {
         TimelineView(.periodic(from: .now, by: 60)) { timeline in
             let progress = YearProgress(now: timeline.date, calendar: TrackerCalendar.calendar)
@@ -29,6 +31,13 @@ struct YearProgressView: View {
                             }
                         }
 
+                        Picker("Visualization", selection: $visualization) {
+                            ForEach(YearProgressVisualization.allCases) { option in
+                                Text(option.title).tag(option.rawValue)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+
                         HStack(alignment: .center) {
                             VStack(alignment: .leading, spacing: 6) {
                                 Text(progress.fractionElapsed, format: .percent.precision(.fractionLength(1)))
@@ -56,18 +65,29 @@ struct YearProgressView: View {
                     .background(.background.secondary, in: RoundedRectangle(cornerRadius: 20))
 
                     VStack(alignment: .leading, spacing: 12) {
-                        YearProgressGrid(year: progress.year, now: timeline.date)
-                            .frame(height: 280)
-
-                        HStack(spacing: 18) {
-                            Label("Past days", systemImage: "xmark")
-                                .foregroundStyle(.indigo)
-                            Label("Today", systemImage: "square")
-                                .foregroundStyle(.indigo.opacity(0.58))
-                            Label("Upcoming days", systemImage: "square")
-                                .foregroundStyle(.secondary)
+                        Group {
+                            switch YearProgressVisualization(rawValue: visualization) ?? .ring {
+                            case .dailyGrid:
+                                YearProgressGrid(year: progress.year, now: timeline.date)
+                            case .ring:
+                                YearProgressRing(fraction: progress.fractionElapsed, daysElapsed: progress.daysElapsed, totalDays: progress.daysElapsed + progress.daysRemaining)
+                            case .monthCalendar:
+                                YearProgressMonthCalendar(year: progress.year, now: timeline.date)
+                            }
                         }
-                        .font(.caption)
+                        .frame(height: 280)
+
+                        if visualization != YearProgressVisualization.ring.rawValue {
+                            HStack(spacing: 18) {
+                                Label("Past days", systemImage: visualization == YearProgressVisualization.dailyGrid.rawValue ? "xmark" : "square.fill")
+                                    .foregroundStyle(.indigo)
+                                Label("Today", systemImage: "square.fill")
+                                    .foregroundStyle(.green)
+                                Label("Upcoming days", systemImage: "square")
+                                    .foregroundStyle(.secondary)
+                            }
+                            .font(.caption)
+                        }
                     }
                     .padding(20)
                     .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 20))
