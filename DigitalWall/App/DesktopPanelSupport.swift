@@ -42,6 +42,7 @@ enum DesktopPanelSupport {
         defaultAnchor: DesktopPanelAnchor = .topRight,
         defaultOffset: NSPoint = NSPoint(x: 36, y: 36),
         acceptsFirstClick: Bool = false,
+        locksAspectRatio: Bool = false,
         @ViewBuilder content: () -> Content
     ) -> DesktopWallPanel {
         let screen = screenUnderPointer() ?? NSScreen.main
@@ -96,10 +97,44 @@ enum DesktopPanelSupport {
         panel.hidesOnDeactivate = false
         panel.setContentEditing(false)
         panel.isExcludedFromWindowsMenu = true
-        panel.minSize = minimumSize
+        if locksAspectRatio {
+            let ratio = initialSize.width / initialSize.height
+            let minimumWidth = max(minimumSize.width, minimumSize.height * ratio)
+            panel.minSize = NSSize(width: minimumWidth, height: minimumWidth / ratio)
+            panel.aspectRatio = initialSize
+            panel.preservesProportions = true
+        } else {
+            panel.minSize = minimumSize
+        }
         panel.setFrameAutosaveName(frameAutosaveName)
+        if locksAspectRatio {
+            panel.setFrame(
+                proportionalFrame(
+                    panel.frame,
+                    aspectRatio: initialSize.width / initialSize.height,
+                    minimumSize: panel.minSize,
+                    within: panel.screen?.visibleFrame ?? visibleFrame
+                ),
+                display: false
+            )
+        }
         DesktopWidgetSpacingCoordinator.shared.register(panel)
         return panel
+    }
+
+    static func proportionalFrame(
+        _ frame: NSRect,
+        aspectRatio: CGFloat,
+        minimumSize: NSSize,
+        within visibleFrame: NSRect
+    ) -> NSRect {
+        let minimumWidth = max(minimumSize.width, minimumSize.height * aspectRatio)
+        let availableWidth = min(visibleFrame.width, visibleFrame.height * aspectRatio)
+        let width = min(max(frame.width, minimumWidth), availableWidth)
+        let height = width / aspectRatio
+        let x = min(max(frame.minX, visibleFrame.minX), visibleFrame.maxX - width)
+        let y = min(max(frame.maxY - height, visibleFrame.minY), visibleFrame.maxY - height)
+        return NSRect(x: x, y: y, width: width, height: height)
     }
 
     static func spacedFrame(
@@ -677,6 +712,12 @@ private final class DesktopWidgetSpacingCoordinator: NSObject {
         guard panel.isVisible else { return }
 
         let identifier = ObjectIdentifier(panel)
+        if panel.preservesProportions {
+            // AppKit applies the frame aspect ratio during the gesture. A separate
+            // width or height snap here would undo it; settle overlaps on mouse-up.
+            lastValidFrames[identifier] = panel.frame
+            return
+        }
         let previousFrame = lastValidFrames[identifier] ?? panel.frame
         let occupiedFrames = NSApp.windows.compactMap { window -> NSRect? in
             guard let other = window as? DesktopWallPanel,
@@ -830,6 +871,8 @@ private final class DesktopAlignmentGuideView: NSView {
 }
 
 final class DesktopWallPanel: NSPanel {
+    var preservesProportions = false
+
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
 

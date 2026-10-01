@@ -26,10 +26,11 @@ final class WorldClockDesktopPanelController {
         }
 
         let panel = DesktopPanelSupport.makePanel(
-            initialSize: NSSize(width: 680, height: 170),
-            minimumSize: NSSize(width: 300, height: 150),
+            initialSize: NSSize(width: 640, height: 150),
+            minimumSize: NSSize(width: 480, height: 113),
             frameAutosaveName: frameAutosaveName,
-            defaultAnchor: .bottomLeft
+            defaultAnchor: .bottomLeft,
+            locksAspectRatio: true
         ) {
             WorldClockDesktopPanelContent(
                 store: store,

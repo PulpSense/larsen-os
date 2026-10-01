@@ -1,5 +1,21 @@
 import Foundation
 
+enum YearProgressVisualization: String, CaseIterable, Identifiable {
+    case ring
+    case monthCalendar
+    case dailyGrid
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .ring: "Progress ring"
+        case .monthCalendar: "Month calendar"
+        case .dailyGrid: "Original day grid"
+        }
+    }
+}
+
 struct YearProgress {
     let year: Int
     let fractionElapsed: Double
