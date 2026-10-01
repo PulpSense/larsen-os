@@ -480,6 +480,111 @@ enum DesktopPanelSupport {
         )
     }
 
+    static func snappedProportionalResizeFrame(
+        _ proposedFrame: NSRect,
+        from previousFrame: NSRect,
+        to occupiedFrames: [NSRect],
+        within visibleFrame: NSRect,
+        minimumSize: NSSize,
+        aspectRatio: CGFloat,
+        spacing: CGFloat = 8,
+        threshold: CGFloat = 5
+    ) -> DesktopWidgetSnapResult {
+        let edges = resizedEdges(from: previousFrame, to: proposedFrame)
+
+        func frame(for width: CGFloat) -> NSRect {
+            let height = width / aspectRatio
+            let x = edges.left && !edges.right ? proposedFrame.maxX - width
+                : edges.right && !edges.left ? proposedFrame.minX
+                : proposedFrame.midX - width / 2
+            let y = edges.bottom && !edges.top ? proposedFrame.maxY - height
+                : edges.top && !edges.bottom ? proposedFrame.minY
+                : proposedFrame.midY - height / 2
+            return NSRect(x: x, y: y, width: width, height: height)
+        }
+
+        func fits(_ candidate: NSRect) -> Bool {
+            let tolerance: CGFloat = 0.5
+            return candidate.width + tolerance >= minimumSize.width
+                && candidate.height + tolerance >= minimumSize.height
+                && candidate.minX >= visibleFrame.minX - tolerance
+                && candidate.maxX <= visibleFrame.maxX + tolerance
+                && candidate.minY >= visibleFrame.minY - tolerance
+                && candidate.maxY <= visibleFrame.maxY + tolerance
+                && !occupiedFrames.contains { candidate.intersects($0.insetBy(dx: -spacing, dy: -spacing)) }
+        }
+
+        var base = proposedFrame
+        if !fits(base) {
+            guard proposedFrame.width > previousFrame.width, fits(previousFrame) else {
+                return DesktopWidgetSnapResult(frame: previousFrame, verticalGuide: nil, horizontalGuide: nil)
+            }
+            var lower = previousFrame.width
+            var upper = proposedFrame.width
+            for _ in 0..<16 {
+                let middle = (lower + upper) / 2
+                if fits(frame(for: middle)) {
+                    lower = middle
+                } else {
+                    upper = middle
+                }
+            }
+            base = frame(for: lower)
+        }
+
+        let horizontalTargets = [visibleFrame.minX, visibleFrame.maxX]
+            + occupiedFrames.flatMap { [$0.minX, $0.maxX, $0.minX - spacing, $0.maxX + spacing] }
+        let verticalTargets = [visibleFrame.minY, visibleFrame.maxY]
+            + occupiedFrames.flatMap { [$0.minY, $0.maxY, $0.minY - spacing, $0.maxY + spacing] }
+        var candidates: [(frame: NSRect, distance: CGFloat, vertical: CGFloat?, horizontal: CGFloat?)] = []
+
+        if edges.left {
+            for target in horizontalTargets where abs(base.minX - target) <= threshold {
+                let candidate = frame(for: base.maxX - target)
+                candidates.append((candidate, abs(base.minX - target), target, nil))
+            }
+        }
+        if edges.right {
+            for target in horizontalTargets where abs(base.maxX - target) <= threshold {
+                let candidate = frame(for: target - base.minX)
+                candidates.append((candidate, abs(base.maxX - target), target, nil))
+            }
+        }
+        if edges.bottom {
+            for target in verticalTargets where abs(base.minY - target) <= threshold {
+                let candidate = frame(for: (base.maxY - target) * aspectRatio)
+                candidates.append((candidate, abs(base.minY - target), nil, target))
+            }
+        }
+        if edges.top {
+            for target in verticalTargets where abs(base.maxY - target) <= threshold {
+                let candidate = frame(for: (target - base.minY) * aspectRatio)
+                candidates.append((candidate, abs(base.maxY - target), nil, target))
+            }
+        }
+        for occupied in occupiedFrames {
+            if edges.left != edges.right,
+               abs(base.midX - occupied.midX) <= threshold {
+                let width = edges.right
+                    ? 2 * (occupied.midX - base.minX)
+                    : 2 * (base.maxX - occupied.midX)
+                candidates.append((frame(for: width), abs(base.midX - occupied.midX), occupied.midX, nil))
+            }
+            if edges.bottom != edges.top,
+               abs(base.midY - occupied.midY) <= threshold {
+                let height = edges.top
+                    ? 2 * (occupied.midY - base.minY)
+                    : 2 * (base.maxY - occupied.midY)
+                candidates.append((frame(for: height * aspectRatio), abs(base.midY - occupied.midY), nil, occupied.midY))
+            }
+        }
+
+        if let snap = candidates.filter({ fits($0.frame) }).min(by: { $0.distance < $1.distance }) {
+            return DesktopWidgetSnapResult(frame: snap.frame, verticalGuide: snap.vertical, horizontalGuide: snap.horizontal)
+        }
+        return DesktopWidgetSnapResult(frame: base, verticalGuide: nil, horizontalGuide: nil)
+    }
+
     private static func clampedFrame(_ frame: NSRect, within visibleFrame: NSRect) -> NSRect {
         let maximumX = max(visibleFrame.minX, visibleFrame.maxX - frame.width)
         let maximumY = max(visibleFrame.minY, visibleFrame.maxY - frame.height)
@@ -713,9 +818,35 @@ private final class DesktopWidgetSpacingCoordinator: NSObject {
 
         let identifier = ObjectIdentifier(panel)
         if panel.preservesProportions {
-            // AppKit applies the frame aspect ratio during the gesture. A separate
-            // width or height snap here would undo it; settle overlaps on mouse-up.
-            lastValidFrames[identifier] = panel.frame
+            let previousFrame = lastValidFrames[identifier] ?? panel.frame
+            let occupiedFrames = NSApp.windows.compactMap { window -> NSRect? in
+                guard let other = window as? DesktopWallPanel,
+                      other !== panel,
+                      other.isVisible else { return nil }
+                return other.frame
+            }
+            let visibleFrame = panel.screen?.visibleFrame
+                ?? NSScreen.main?.visibleFrame
+                ?? panel.frame
+            let snapResult = DesktopPanelSupport.snappedProportionalResizeFrame(
+                panel.frame,
+                from: previousFrame,
+                to: occupiedFrames,
+                within: visibleFrame,
+                minimumSize: panel.minSize,
+                aspectRatio: panel.aspectRatio.width / panel.aspectRatio.height
+            )
+            if snapResult.frame != panel.frame {
+                adjustingPanels.insert(identifier)
+                panel.setFrame(snapResult.frame, display: true, animate: false)
+                adjustingPanels.remove(identifier)
+            }
+            lastValidFrames[identifier] = snapResult.frame
+            showGuides(
+                vertical: snapResult.verticalGuide,
+                horizontal: snapResult.horizontalGuide,
+                for: panel
+            )
             return
         }
         let previousFrame = lastValidFrames[identifier] ?? panel.frame

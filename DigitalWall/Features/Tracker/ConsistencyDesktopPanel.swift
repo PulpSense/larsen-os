@@ -24,7 +24,7 @@ final class ConsistencyDesktopPanelController {
 
         let panel = DesktopPanelSupport.makePanel(
             initialSize: NSSize(width: 680, height: 220),
-            minimumSize: NSSize(width: 550, height: 178),
+            minimumSize: NSSize(width: 600, height: 194),
             frameAutosaveName: "DigitalWallConsistencyDesktopPanel",
             defaultOffset: NSPoint(x: 500, y: 36),
             locksAspectRatio: true

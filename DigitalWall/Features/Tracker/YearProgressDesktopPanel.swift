@@ -23,7 +23,7 @@ final class YearProgressDesktopPanelController {
 
         let panel = DesktopPanelSupport.makePanel(
             initialSize: NSSize(width: 600, height: 240),
-            minimumSize: NSSize(width: 500, height: 200),
+            minimumSize: NSSize(width: 550, height: 220),
             frameAutosaveName: "DigitalWallYearProgressDesktopPanelCompact",
             defaultAnchor: .topLeft,
             defaultOffset: NSPoint(x: 36, y: 310),
