@@ -5,6 +5,7 @@ import SwiftUI
 struct DigitalWallApp: App {
     @NSApplicationDelegateAdaptor(DigitalWallAppDelegate.self) private var appDelegate
     @StateObject private var store = WallStore()
+    @AppStorage("settingsTab") private var settingsTab = "general"
 
     var body: some Scene {
         Window("Digital Wall", id: "main") {
@@ -12,6 +13,10 @@ struct DigitalWallApp: App {
                 .frame(minWidth: 820, minHeight: 600)
                 .modifier(MainWindowRegistrationModifier())
                 .onAppear {
+                    HourCheckInPanelController.shared.rememberActiveApplication()
+                    CheckInShortcut.shared.start {
+                        HourCheckInPanelController.shared.toggle(store: store)
+                    }
                     PhraseDesktopPanelController.shared.restoreIfEnabled(store: store)
                     VisionBoardDesktopPanelController.shared.restoreIfEnabled(store: store)
                     ConsistencyDesktopPanelController.shared.restoreIfEnabled(store: store)
@@ -21,30 +26,14 @@ struct DigitalWallApp: App {
                 .onOpenURL { url in
                     guard url.scheme == AppConfiguration.urlScheme else { return }
                     switch url.host {
+                    case "finish-hour", "log-deep-work-hour", "win-deep-work-day":
+                        HourCheckInPanelController.shared.present(store: store, source: .externalURL)
                     case "show-phrase-panel":
                         PhraseDesktopPanelController.shared.present(store: store)
                     case "show-vision-panel":
                         VisionBoardDesktopPanelController.shared.present(store: store)
                     case "show-consistency-panel":
                         ConsistencyDesktopPanelController.shared.present(store: store)
-                    case "log-deep-work-hour", "win-deep-work-day":
-                        store.reloadFromDisk()
-                        _ = store.addDeepWorkHour(on: Date())
-                        let hours = store.deepWorkHours(on: Date())
-                        if hours >= DeepWork.dailyGoalHours {
-                            let streak = ConsistencyStreak.current(
-                                completedDays: store.completedDays,
-                                through: Date(),
-                                calendar: TrackerCalendar.calendar
-                            )
-                            DeepWorkCelebrationPresenter.shared.present(
-                                hours: hours,
-                                streak: streak,
-                                hideApplicationOnDismiss: true
-                            )
-                        } else {
-                            NSApp.hide(nil)
-                        }
                     case "show-year-progress":
                         YearProgressDesktopPanelController.shared.present()
                     case "show-world-clocks":
@@ -99,6 +88,10 @@ struct DigitalWallApp: App {
                     ConsistencyDesktopPanelController.shared.present(store: store)
                 }
 
+                Button("Finish Hour") {
+                    HourCheckInPanelController.shared.present(store: store)
+                }
+
                 Button("Show Year Elapsed on Desktop") {
                     YearProgressDesktopPanelController.shared.present()
                 }
@@ -110,7 +103,15 @@ struct DigitalWallApp: App {
         }
 
         Settings {
-            SettingsView()
+            TabView(selection: $settingsTab) {
+                SettingsView()
+                    .tabItem { Label("General", systemImage: "gearshape") }
+                    .tag("general")
+                WebhookSettingsView(store: store)
+                    .tabItem { Label("Webhook", systemImage: "arrow.triangle.2.circlepath") }
+                    .tag("webhook")
+            }
+            .frame(width: 560, height: 540)
         }
     }
 }
@@ -189,14 +190,32 @@ final class DigitalWallAppDelegate: NSObject, NSApplicationDelegate {
 
 private struct SettingsView: View {
     @StateObject private var launchAtLogin = LaunchAtLoginController.shared
+    @StateObject private var checkInShortcut = CheckInShortcut.shared
     @AppStorage("yearProgressVisualization") private var yearProgressVisualization = YearProgressVisualization.ring.rawValue
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             Label("Private by design", systemImage: "lock.fill")
                 .font(.headline)
-            Text("Your images, phrases, and deep-work history stay on this Mac.")
+            Text("Your data is stored on this Mac. Hour check-ins are sent to your webhook only when you enable sync.")
                 .foregroundStyle(.secondary)
+
+            Divider()
+
+            Toggle("Enable global Finish Hour shortcut", isOn: Binding(
+                get: { checkInShortcut.isEnabled }, set: { checkInShortcut.setEnabled($0) }
+            ))
+            Picker("Shortcut", selection: Binding(
+                get: { checkInShortcut.combination }, set: { checkInShortcut.setCombination($0) }
+            )) {
+                ForEach(CheckInShortcutCombination.allCases) { shortcut in
+                    Text(shortcut.title).tag(shortcut)
+                }
+            }
+            .disabled(!checkInShortcut.isEnabled)
+            if let error = checkInShortcut.errorMessage {
+                Text(error).font(.caption).foregroundStyle(.red)
+            }
 
             Divider()
 

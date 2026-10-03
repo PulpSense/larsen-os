@@ -7,10 +7,12 @@ final class FullScreenOverlayController {
     private var keyMonitor: Any?
     private var dismissalTask: Task<Void, Never>?
     private var hideApplicationOnDismiss = false
+    private var onDismiss: (() -> Void)?
 
     func present<Content: View>(
         hideApplicationOnDismiss: Bool,
         autoDismissAfter: Duration? = nil,
+        onDismiss: (() -> Void)? = nil,
         dismissOnKeyDown: @escaping (NSEvent) -> Bool,
         @ViewBuilder content: (_ dismiss: @escaping () -> Void) -> Content
     ) {
@@ -36,8 +38,10 @@ final class FullScreenOverlayController {
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
         panel.hidesOnDeactivate = false
         panel.setFrame(screen.frame, display: true)
+        panel.isReleasedWhenClosed = false
         self.panel = panel
         self.hideApplicationOnDismiss = hideApplicationOnDismiss
+        self.onDismiss = onDismiss
         panel.makeKeyAndOrderFront(nil)
 
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { [weak self] event in
@@ -66,9 +70,12 @@ final class FullScreenOverlayController {
             NSEvent.removeMonitor(keyMonitor)
             self.keyMonitor = nil
         }
-        panel?.orderOut(nil)
+        panel?.close()
         panel = nil
         hideApplicationOnDismiss = false
+        let completion = onDismiss
+        onDismiss = nil
+        if let completion { DispatchQueue.main.async { completion() } }
 
         if hideApplication {
             DispatchQueue.main.async {

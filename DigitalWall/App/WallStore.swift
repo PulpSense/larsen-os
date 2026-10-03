@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import Network
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -7,10 +8,204 @@ import UniformTypeIdentifiers
 final class WallStore: ObservableObject {
     @Published private(set) var state: WallState
     @Published var lastError: String?
+    @Published private(set) var isSyncingWebhook = false
+    @Published private(set) var isTestingWebhook = false
+    @Published private(set) var isOnline = true
+    @Published private(set) var webhookError: String?
+    @Published private(set) var webhookTestResult: String?
 
-    init() {
-        state = WallPersistence.load()
-        removeLegacyFolderAccess()
+    private let loadState: () -> WallState
+    private let saveState: (WallState) throws -> Void
+    private let webhookClient: WebhookClient
+    private let readWebhookToken: () throws -> String
+    private let writeWebhookToken: (String) throws -> Void
+    private let networkMonitor = NWPathMonitor()
+    private var retryTimer: Timer?
+    private var wakeObserver: NSObjectProtocol?
+
+    init(
+        load: @escaping () -> WallState = WallPersistence.load,
+        save: @escaping (WallState) throws -> Void = WallPersistence.save,
+        webhookClient: WebhookClient = WebhookClient(),
+        readWebhookToken: @escaping () throws -> String = WebhookSecret.read,
+        writeWebhookToken: @escaping (String) throws -> Void = WebhookSecret.write,
+        startWebhookSync: Bool = true
+    ) {
+        loadState = load
+        saveState = save
+        self.webhookClient = webhookClient
+        self.readWebhookToken = readWebhookToken
+        self.writeWebhookToken = writeWebhookToken
+        state = load()
+        if startWebhookSync {
+            removeLegacyFolderAccess()
+            startSyncing()
+        }
+    }
+
+    deinit {
+        networkMonitor.cancel()
+        retryTimer?.invalidate()
+        if let wakeObserver { NSWorkspace.shared.notificationCenter.removeObserver(wakeObserver) }
+    }
+
+    var hourCheckIns: [HourCheckIn] { state.hourCheckIns }
+    var webhookSettings: WebhookSettings { state.webhookSettings }
+    var pendingCheckIns: [HourCheckIn] { state.hourCheckIns.filter { $0.deliveredAt == nil } }
+
+    var webhookStatus: String {
+        if !webhookSettings.isEnabled {
+            return isSyncingWebhook ? "Sync paused · finishing the current request" : "Sync paused · \(pendingCheckIns.count) pending"
+        }
+        if isSyncingWebhook { return "Sending check-ins…" }
+        if !isOnline { return "Offline · check-ins saved locally" }
+        if let webhookError { return webhookError }
+        if let error = pendingCheckIns.first?.lastDeliveryError { return error }
+        return pendingCheckIns.isEmpty ? "All check-ins sent" : "\(pendingCheckIns.count) check-ins pending"
+    }
+
+    @discardableResult
+    func finishHour(id: UUID, form: HourCheckInForm, at date: Date = Date()) -> Bool {
+        if let message = form.validationMessage {
+            lastError = message
+            return false
+        }
+        var current = state
+        current.deepWorkHours = loadState().deepWorkHours
+        let updated = HourCheckIns.recording(id: id, form: form, at: date, in: current)
+        guard commitCheckIns(updated, preserveOnDiskHours: false) else { return false }
+        Task { await syncWebhook() }
+        return true
+    }
+
+    @discardableResult
+    func finishHour(id: UUID, summary: String, notes: String, at date: Date = Date()) -> Bool {
+        guard !summary.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            lastError = "Add a short summary of your hour."
+            return false
+        }
+        var current = state
+        current.deepWorkHours = loadState().deepWorkHours
+        let updated = HourCheckIns.recording(id: id, summary: summary, notes: notes, at: date, in: current)
+        guard commitCheckIns(updated, preserveOnDiskHours: false) else { return false }
+        Task { await syncWebhook() }
+        return true
+    }
+
+    @discardableResult
+    func configureWebhook(url: String, token: String, enabled: Bool) -> Bool {
+        guard !isTestingWebhook else { return false }
+        let trimmed = url.trimmingCharacters(in: .whitespacesAndNewlines)
+        do {
+            if enabled || !trimmed.isEmpty { _ = try WebhookRequest.endpoint(trimmed) }
+            let previousToken = try readWebhookToken()
+            try writeWebhookToken(token)
+            var updated = state
+            updated.webhookSettings = WebhookSettings(url: trimmed, isEnabled: enabled)
+            updated.deepWorkHours = loadState().deepWorkHours
+            do { try saveState(updated) } catch {
+                try? writeWebhookToken(previousToken)
+                throw error
+            }
+            state = updated
+            webhookError = nil
+            webhookTestResult = nil
+            Task { await syncWebhook(force: true) }
+            return true
+        } catch {
+            lastError = error.localizedDescription
+            return false
+        }
+    }
+
+    func sendWebhookTest() async {
+        guard !isTestingWebhook && !isSyncingWebhook else { return }
+        isTestingWebhook = true
+        webhookTestResult = nil
+        defer { isTestingWebhook = false }
+        do {
+            try await webhookClient.send(.test(), url: webhookSettings.url, token: readWebhookToken())
+            webhookTestResult = "Test delivered. Check your automation for a webhook.test event."
+        } catch {
+            webhookTestResult = WebhookClient.message(for: error)
+        }
+    }
+
+    func syncWebhook(force: Bool = false) async {
+        guard webhookSettings.isEnabled, !isSyncingWebhook, !isTestingWebhook,
+              !pendingCheckIns.isEmpty else { return }
+        isSyncingWebhook = true
+        webhookError = nil
+        defer { isSyncingWebhook = false }
+        do {
+            while webhookSettings.isEnabled, let checkIn = pendingCheckIns.first {
+                if !force, let next = checkIn.nextAttemptAt, next > Date() { break }
+                // Settings can change while the preceding request is in flight.
+                let url = webhookSettings.url
+                let token = try readWebhookToken()
+                do {
+                    try await webhookClient.send(checkIn.payload, url: url, token: token)
+                } catch {
+                    let message = WebhookClient.message(for: error)
+                    webhookError = message
+                    var updated = state
+                    if let index = updated.hourCheckIns.firstIndex(where: { $0.id == checkIn.id }) {
+                        updated.hourCheckIns[index].recordFailure(message, at: Date())
+                        _ = commitCheckIns(updated)
+                    }
+                    break
+                }
+                var updated = state
+                guard let index = updated.hourCheckIns.firstIndex(where: { $0.id == checkIn.id }) else { break }
+                updated.hourCheckIns[index].deliveredAt = Date()
+                updated.hourCheckIns[index].lastDeliveryError = nil
+                updated.hourCheckIns[index].nextAttemptAt = nil
+                guard commitCheckIns(updated) else {
+                    webhookError = "Delivered, but couldn’t save its status. Will retry with the same submission ID."
+                    break
+                }
+            }
+        } catch {
+            webhookError = WebhookClient.message(for: error)
+        }
+    }
+
+    private func commitCheckIns(_ updated: WallState, preserveOnDiskHours: Bool = true) -> Bool {
+        do {
+            var updated = updated
+            // Other app entry points may have written hours while a request was in flight.
+            if preserveOnDiskHours {
+                updated.deepWorkHours = loadState().deepWorkHours
+            }
+            try saveState(updated)
+            state = updated
+            return true
+        } catch {
+            lastError = "Couldn’t save the check-in: \(error.localizedDescription)"
+            return false
+        }
+    }
+
+    private func startSyncing() {
+        networkMonitor.pathUpdateHandler = { [weak self] path in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                let wasOnline = self.isOnline
+                self.isOnline = path.status == .satisfied
+                if self.isOnline { await self.syncWebhook(force: !wasOnline) }
+            }
+        }
+        networkMonitor.start(queue: DispatchQueue(label: "DigitalWall.webhook-network"))
+        let timer = Timer(timeInterval: 30, repeats: true) { [weak self] _ in
+            Task { @MainActor [weak self] in await self?.syncWebhook() }
+        }
+        retryTimer = timer
+        RunLoop.main.add(timer, forMode: .common)
+        wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didWakeNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in await self?.syncWebhook(force: true) }
+        }
     }
 
     var images: [VisionImage] { state.images }
@@ -140,7 +335,7 @@ final class WallStore: ObservableObject {
 
     @discardableResult
     func addDeepWorkHour(on date: Date) -> Bool {
-        state.deepWorkHours = WallPersistence.load().deepWorkHours
+        state.deepWorkHours = loadState().deepWorkHours
         let previousHours = deepWorkHours(on: date)
         state = DeepWork.addingHour(on: date, to: state)
         persist(preserveOnDiskDeepWorkHours: false)
@@ -148,13 +343,13 @@ final class WallStore: ObservableObject {
     }
 
     func setDeepWorkHours(_ hours: Int, on date: Date) {
-        state.deepWorkHours = WallPersistence.load().deepWorkHours
+        state.deepWorkHours = loadState().deepWorkHours
         state = DeepWork.settingHours(hours, on: date, in: state)
         persist(preserveOnDiskDeepWorkHours: false)
     }
 
     func reloadFromDisk() {
-        state = WallPersistence.load()
+        state = loadState()
     }
 
     func updatePhrase(_ phrase: String, for id: UUID) {
@@ -298,15 +493,15 @@ final class WallStore: ObservableObject {
 
         guard !state.folders.isEmpty else { return }
         state.folders.removeAll()
-        try? WallPersistence.save(state)
+        try? saveState(state)
     }
 
     private func persist(preserveOnDiskDeepWorkHours: Bool = true) {
         do {
             if preserveOnDiskDeepWorkHours {
-                state.deepWorkHours = WallPersistence.load().deepWorkHours
+                state.deepWorkHours = loadState().deepWorkHours
             }
-            try WallPersistence.save(state)
+            try saveState(state)
         } catch {
             lastError = error.localizedDescription
         }

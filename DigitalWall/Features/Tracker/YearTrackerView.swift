@@ -54,10 +54,8 @@ struct YearTrackerView: View {
                     .foregroundStyle(.secondary)
             }
             Spacer()
-            Button("Log 1 hour today", systemImage: "plus") {
-                displayedYear = calendar.component(.year, from: Date())
-                editingDate = Date()
-                addHour(on: Date())
+            Button("Finish hour", systemImage: "checklist") {
+                HourCheckInPanelController.shared.present(store: store)
             }
             .buttonStyle(.borderedProminent)
         }

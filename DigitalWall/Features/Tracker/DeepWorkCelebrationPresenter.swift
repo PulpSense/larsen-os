@@ -9,12 +9,13 @@ final class DeepWorkCelebrationPresenter {
 
     private init() {}
 
-    func present(hours: Int, streak: Int, hideApplicationOnDismiss: Bool) {
-        guard let milestone = DeepWorkCelebrationMilestone.forHours(hours) else { return }
+    func present(hours: Int, streak: Int, hideApplicationOnDismiss: Bool, onDismiss: (() -> Void)? = nil) {
+        guard let milestone = DeepWorkCelebrationMilestone.forHours(hours) else { onDismiss?(); return }
 
         overlay.present(
             hideApplicationOnDismiss: hideApplicationOnDismiss,
             autoDismissAfter: .seconds(milestone == .dayWon ? 5.8 : 3.0),
+            onDismiss: onDismiss,
             dismissOnKeyDown: { event in
                 event.keyCode == 53 || event.charactersIgnoringModifiers == " "
             }
