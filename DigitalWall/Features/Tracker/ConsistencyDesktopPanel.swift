@@ -83,7 +83,7 @@ private struct ConsistencyDesktopPanelContent: View {
                         Spacer()
 
                         Button {
-                            addHour(now: now)
+                            HourCheckInPanelController.shared.present(store: store)
                         } label: {
                             Image(systemName: "plus")
                                 .font(.caption.bold())
@@ -93,7 +93,7 @@ private struct ConsistencyDesktopPanelContent: View {
                                 .contentTransition(.symbolEffect(.replace))
                         }
                         .buttonStyle(.plain)
-                        .help("Log one deep work hour")
+                        .help("Finish hour: complete a check-in and log one hour")
                     }
                 }
 
@@ -137,16 +137,6 @@ private struct ConsistencyDesktopPanelContent: View {
         )
     }
 
-    private func addHour(now: Date) {
-        _ = store.addDeepWorkHour(on: now)
-        let hours = store.deepWorkHours(on: now)
-        guard hours >= DeepWork.dailyGoalHours else { return }
-        DeepWorkCelebrationPresenter.shared.present(
-            hours: hours,
-            streak: currentStreak(now: now),
-            hideApplicationOnDismiss: false
-        )
-    }
 }
 
 private struct DesktopConsistencyYearGrid: View {

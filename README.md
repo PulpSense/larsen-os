@@ -46,12 +46,55 @@ On its first installed launch, Digital Wall enables **Open Digital Wall at login
 ### Track deep work
 
 1. Open **Deep Work Hours** in the app or place its floating panel on the desktop.
-2. At the end of each completed hour, click **+**. Deep work is intentionally recorded in whole hours.
+2. At the end of each completed hour, click **+** on the desktop panel or **Finish hour** in the app. Choose a date and category, describe your activity and distractions (enter “None” if there were none), and check the daily preparation items you completed. Check **This was a deep work hour** to also log one hour in the tracker; ordinary check-ins are saved and synced without increasing deep work hours. The answers and hour are saved together on your Mac, even offline. Deep work is intentionally recorded in whole hours.
 3. The calendar distinguishes zero-hour days from partial days. Hours one through three become progressively stronger indigo cells.
 4. The fourth hour wins the day, advances the day streak, changes the calendar into its earned-color range, and launches the full-screen **DAY WON** celebration.
 5. Keep logging after four hours to get distinct 5H, 6H, 7H, 8H, and evolving 9H+ celebrations. The calendar color continues progressing so an exceptional day remains visually different from a minimum win.
 
 Use **Edit deep work** to correct or backfill a selected date. Incrementing today from that control still celebrates a newly reached milestone; historical corrections remain quiet. Reduce Motion keeps the milestone message visible while removing the large movement effects.
+
+### Sync hour check-ins to your automation
+
+In **Digital Wall → Settings → Webhook**, enter an HTTPS webhook URL and optional bearer token, enable sync, and save. The token is stored in macOS Keychain. **Send test** sends a `webhook.test` event with zero hours; it does not affect your tracker. Map the JSON fields in your own automation into Google Sheets or any other destination.
+
+All pending check-ins are sent to the currently configured URL when sync is enabled. Pausing sync keeps pending check-ins on your Mac and stops new requests after the current request finishes. URL and token changes apply to the next request. Delivery runs while Digital Wall is running, resumes after restarting it, and retries when connectivity returns or the Mac wakes. Failed requests retry with a delay from 30 seconds up to 5 minutes. **Retry now** bypasses that delay. Recent check-ins and their delivery status appear in **Hour Check-ins**.
+
+Requests use `POST`, `Content-Type: application/json`, an `Idempotency-Key` header matching `submission_id`, and `Authorization: Bearer <token>` when a token is configured. Example payload:
+
+```json
+{
+  "schema_version": 2,
+  "submission_id": "6BFF7538-8B20-4F76-9096-21F327B01D9F",
+  "event": "hour.completed",
+  "completed_at": "2026-10-03T15:00:00Z",
+  "day": "2026-10-03",
+  "time_zone": "America/Argentina/Buenos_Aires",
+  "summary": "Finished the landing page",
+  "notes": "",
+  "activity": "Finished the landing page",
+  "category": "Marketing",
+  "is_deep_work": true,
+  "distractions": "None",
+  "daily_preparation": {
+    "read_10x_rule": true,
+    "reviewed_top_goals": true,
+    "reviewed_version_of_myself": true,
+    "read_motivation_list_out_loud": false,
+    "read_thought_habits": true,
+    "reviewed_vision_board": true
+  },
+  "hours": 1,
+  "daily_hours": 3
+}
+```
+
+`completed_at` is the original submission time in UTC; `day` is the selected form date, and `time_zone` records the local zone. `hours` is 1 for deep work and 0 for an ordinary hour. `daily_hours` is the selected day's tracker total when the form was submitted. `summary` mirrors `activity` for compatibility. Categories match the reference form: Sales, Marketing, Fulfillment, Operations, Learning, Other. All six preparation flags are included, including unchecked items. Manual tracker corrections and quick hour logging do not create webhook events. Older locally saved check-ins remain readable and deliverable, with their original summary and notes; new form fields are absent when they were not recorded.
+
+Your automation must validate the bearer token and deduplicate on `submission_id` before appending rows. Digital Wall marks delivery successful only after an HTTP 2xx response. If an acknowledgment is lost, the same submission may arrive again with the same ID. Return 2xx after durably accepting the event; redirects are rejected to avoid forwarding private answers or tokens to another URL. HTTPS webhook URLs can themselves contain secrets, so keep your local app data private too.
+
+Open the floating form from any app with the global **Shift-Command-H** shortcut or `digitalwall2://finish-hour`. Enable, disable, or choose another shortcut in **Settings → General**. Digital Wall must be running, including quietly at login. The form appears on the display under the pointer, above other apps and full-screen windows, with a dim backdrop on each connected display. **Tab / Shift-Tab** moves between fields; **Space** checks a focused checkbox; **Command-Return** submits; **Escape** closes it and preserves the draft. Successful submission closes the form and resets it for the next hour. The form shows today’s progress; daily preparation stays visible in two columns, with Tab navigation across each row. Deep work submissions trigger the tracker’s celebrations at 4, 5, 6, 7, 8, and later hours. Focus returns after the celebration closes. Other submissions show a brief, non-interactive confirmation. The date is always today. **Clear** resets the draft; Escape preserves it. Dismissal returns focus to the previous app. The legacy `log-deep-work-hour` and `win-deep-work-day` links now open the form too; opening a link never records an hour automatically.
+
+Run the check-in persistence and delivery tests with `zsh Tests/run-hour-check-ins.sh`.
 
 ### Track the year
 
@@ -80,4 +123,4 @@ Open **Year Elapsed** in the app to see the current year’s progress, days elap
 
 ## Data and privacy
 
-Digital Wall stores its JSON state and copied vision-board images locally in the App Group container configured in your private `Signing.local.xcconfig`. The checked-in example identifiers are placeholders and are not tied to any person or development team. The app has no network client, account system, analytics, or cloud dependency. Removing the app does not automatically remove that App Group data.
+Digital Wall stores its JSON state, hour check-ins, and copied vision-board images locally in the App Group container configured in your private `Signing.local.xcconfig`. The checked-in example identifiers are placeholders and are not tied to any person or development team. Webhook sync is optional and disabled by default; when enabled, only check-in payloads are sent to your configured endpoint. It has no account system or analytics. Removing the app does not automatically remove that App Group data or its Keychain token.

@@ -7,6 +7,7 @@ struct DashboardView: View {
     enum Section: String, CaseIterable, Identifiable {
         case vision = "Vision Boards"
         case tracker = "Deep Work Hours"
+        case checkIns = "Hour Check-ins"
         case yearProgress = "Year Elapsed"
         case phrases = "Phrases"
         case clocks = "World Clocks"
@@ -16,6 +17,7 @@ struct DashboardView: View {
             switch self {
             case .vision: "photo.on.rectangle.angled"
             case .tracker: "square.grid.3x3.fill"
+            case .checkIns: "checklist"
             case .yearProgress: "chart.bar.fill"
             case .phrases: "quote.bubble.fill"
             case .clocks: "globe.americas.fill"
@@ -46,6 +48,8 @@ struct DashboardView: View {
                     VisionBoardEditorView(store: store)
                 case .tracker:
                     YearTrackerView(store: store)
+                case .checkIns:
+                    HourCheckInsView(store: store)
                 case .yearProgress:
                     YearProgressView()
                 case .phrases:

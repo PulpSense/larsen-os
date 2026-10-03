@@ -142,6 +142,8 @@ struct WallState: Codable, Sendable {
     var phrasesMarkdown: String
     var desktopPhrases: [DesktopPhrase]
     var worldClocks: [WorldClock]
+    var hourCheckIns: [HourCheckIn] = []
+    var webhookSettings = WebhookSettings()
 
     init(
         images: [VisionImage],
@@ -181,6 +183,7 @@ struct WallState: Codable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case images, visionBoards, visionBoardPrivacyEnabled, visionBoardPrivacyMessage
         case folders, completedDays, deepWorkHours, phrasesMarkdown, desktopPhrases, worldClocks
+        case hourCheckIns, webhookSettings
     }
 
     init(from decoder: Decoder) throws {
@@ -222,6 +225,8 @@ struct WallState: Codable, Sendable {
         }
         phrasesMarkdown = desktopPhrases[0].markdown
         worldClocks = try container.decodeIfPresent([WorldClock].self, forKey: .worldClocks) ?? Self.starterWorldClocks
+        hourCheckIns = try container.decodeIfPresent([HourCheckIn].self, forKey: .hourCheckIns) ?? []
+        webhookSettings = try container.decodeIfPresent(WebhookSettings.self, forKey: .webhookSettings) ?? WebhookSettings()
     }
 
     func encode(to encoder: Encoder) throws {
@@ -236,6 +241,8 @@ struct WallState: Codable, Sendable {
         try container.encode(phrasesMarkdown, forKey: .phrasesMarkdown)
         try container.encode(desktopPhrases, forKey: .desktopPhrases)
         try container.encode(worldClocks, forKey: .worldClocks)
+        try container.encode(hourCheckIns, forKey: .hourCheckIns)
+        try container.encode(webhookSettings, forKey: .webhookSettings)
     }
 
     var completedDays: Set<String> {
