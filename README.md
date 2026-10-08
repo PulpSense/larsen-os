@@ -114,7 +114,7 @@ Open **Year Elapsed** in the app to see the current year’s progress, days elap
 ### Arrange the desktop
 
 - Show Deep Work Hours, Vision Boards, Phrases, Year Elapsed, or World Clocks as floating desktop panels from the app.
-- Drag panels into position. They keep a small gap from one another and remember their placement.
+- Drag panels freely into position, including over other panels. Subtle alignment guides suggest matching edges, centers, or gaps without snapping or blocking movement. Panels remember their placement.
 - Hover over a panel and open its **•••** menu. **Edit** opens the corresponding editor in Digital Wall, with that phrase or board selected.
 - Create phrases and vision boards, add clocks, and manage their content in the app. Desktop panels update as you edit.
 - Use **Show on desktop** in Deep Work Hours, Year Elapsed, or World Clocks to show or hide its panel. These toggles stay synchronized with widget menus and remember the setting after relaunch.

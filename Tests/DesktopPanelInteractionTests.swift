@@ -67,74 +67,69 @@ struct DesktopPanelInteractionTests {
         )
         precondition(recovered.minX >= 0 && recovered.minY >= 0, "An off-screen panel should be recovered into the visible frame")
 
-        let occupiedFrame = NSRect(x: 90, y: 0, width: 100, height: 100)
-        let spaced = DesktopPanelSupport.spacedFrame(
-            NSRect(x: 80, y: 0, width: 100, height: 100),
-            avoiding: [occupiedFrame],
-            within: NSRect(x: 0, y: 0, width: 500, height: 500)
-        )
-        let occupiedExclusion = occupiedFrame.insetBy(
-            dx: -DesktopPanelSupport.minimumWidgetSpacing,
-            dy: -DesktopPanelSupport.minimumWidgetSpacing
-        )
-        precondition(
-            !spaced.intersects(occupiedExclusion),
-            "Overlapping widgets should settle with the minimum gap"
-        )
-
-        let alreadySpaced = DesktopPanelSupport.spacedFrame(
-            spaced,
-            avoiding: [occupiedFrame],
-            within: NSRect(x: 0, y: 0, width: 500, height: 500)
-        )
-        precondition(alreadySpaced == spaced, "A correctly spaced widget should not move")
-
-        let liveBarrier = DesktopPanelSupport.constrainedFrame(
-            NSRect(x: 150, y: 0, width: 100, height: 100),
-            from: NSRect(x: 0, y: 0, width: 100, height: 100),
-            avoiding: [NSRect(x: 108, y: 0, width: 100, height: 100)],
-            within: NSRect(x: 0, y: 0, width: 500, height: 500)
-        )
-        precondition(
-            liveBarrier.maxX == 100,
-            "A dragged widget should stop at the gap instead of passing through"
-        )
-
-        let aroundTheEdge = DesktopPanelSupport.constrainedFrame(
-            NSRect(x: 150, y: 120, width: 100, height: 100),
-            from: NSRect(x: 0, y: 0, width: 100, height: 100),
-            avoiding: [NSRect(x: 108, y: 0, width: 100, height: 100)],
-            within: NSRect(x: 0, y: 0, width: 500, height: 500)
-        )
-        precondition(
-            aroundTheEdge.origin == NSPoint(x: 150, y: 120),
-            "A widget should still be able to move around another widget's edge"
-        )
-
-        let moveSnap = DesktopPanelSupport.snappedFrame(
+        let visibleFrame = NSRect(x: 0, y: 0, width: 500, height: 500)
+        let nearbyFrame = NSRect(x: 200, y: 0, width: 100, height: 100)
+        let movementGuides = DesktopPanelSupport.movementGuides(
             NSRect(x: 94, y: 0, width: 100, height: 100),
-            to: [NSRect(x: 200, y: 0, width: 100, height: 100)],
-            within: NSRect(x: 0, y: 0, width: 500, height: 500)
+            to: [nearbyFrame],
+            within: visibleFrame
+        )
+        precondition(movementGuides.verticalGuide == 196, "Nearby spacing should offer a visual guide")
+        precondition(movementGuides.horizontalGuide == 0, "Matching edges should offer a visual guide")
+
+        let awayFromAlignment = DesktopPanelSupport.movementGuides(
+            NSRect(x: 120, y: 120, width: 100, height: 100),
+            to: [nearbyFrame],
+            within: visibleFrame
         )
         precondition(
-            moveSnap.frame.minX == 92,
-            "Positioning near another widget should snap to the shared gap"
+            awayFromAlignment.verticalGuide == nil && awayFromAlignment.horizontalGuide == nil,
+            "Guides should disappear once the widget moves away from alignment"
         )
-        precondition(moveSnap.verticalGuide != nil, "A position snap should provide a guide")
 
-        let resizeSnap = DesktopPanelSupport.snappedResizeFrame(
+        let resizeGuides = DesktopPanelSupport.resizeGuides(
             NSRect(x: 0, y: 0, width: 196, height: 100),
             from: NSRect(x: 0, y: 0, width: 100, height: 100),
             to: [NSRect(x: 208, y: 0, width: 100, height: 100)],
-            within: NSRect(x: 0, y: 0, width: 500, height: 500),
+            within: visibleFrame,
             minimumSize: NSSize(width: 80, height: 80)
         )
-        precondition(
-            resizeSnap.frame.maxX == 200,
-            "Resizing near another widget should snap to the shared gap"
-        )
-        precondition(resizeSnap.verticalGuide != nil, "A resize snap should provide a guide")
+        precondition(resizeGuides.verticalGuide == 200, "Resizing should offer a nearby edge guide")
 
-        print("PASS: desktop-widget interaction and spacing behavior")
+        // Exercise the actual notification coordinator, including its initial
+        // registration and resize completion, so no delayed adjustment can
+        // undo an intentionally overlapping position.
+        let first = DesktopPanelSupport.makePanel(
+            initialSize: NSSize(width: 200, height: 120),
+            minimumSize: NSSize(width: 100, height: 80),
+            frameAutosaveName: "DigitalWallFreeMovementFirstTest"
+        ) { Color.clear }
+        let second = DesktopPanelSupport.makePanel(
+            initialSize: NSSize(width: 200, height: 120),
+            minimumSize: NSSize(width: 100, height: 80),
+            frameAutosaveName: "DigitalWallFreeMovementSecondTest",
+            locksAspectRatio: true
+        ) { Color.clear }
+        first.orderFrontRegardless()
+        second.orderFrontRegardless()
+        let screen = NSScreen.main!.visibleFrame
+        let start = NSRect(x: screen.midX - 100, y: screen.midY - 60, width: 200, height: 120)
+        first.setFrame(start, display: false)
+        let overlapping = start.offsetBy(dx: 20, dy: 10)
+        second.setFrame(overlapping, display: false)
+        NotificationCenter.default.post(name: NSWindow.didMoveNotification, object: second)
+        RunLoop.main.run(until: Date().addingTimeInterval(0.2))
+        precondition(second.frame == overlapping, "Overlapping placement must survive registration and movement")
+        let enlarged = NSRect(origin: overlapping.origin, size: NSSize(width: 300, height: 180))
+        second.setFrame(enlarged, display: false)
+        NotificationCenter.default.post(name: NSWindow.didResizeNotification, object: second)
+        NotificationCenter.default.post(name: NSWindow.didEndLiveResizeNotification, object: second)
+        RunLoop.main.run(until: Date().addingTimeInterval(0.2))
+        precondition(second.frame == enlarged, "A proportional widget may resize over other widgets")
+        precondition(first.frame == start, "Moving or resizing a widget must not displace its neighbor")
+        first.close()
+        second.close()
+
+        print("PASS: desktop-widget free movement and alignment suggestions")
     }
 }
