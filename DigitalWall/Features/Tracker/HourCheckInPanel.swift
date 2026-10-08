@@ -103,7 +103,7 @@ final class HourCheckInPanelController {
         }
         // Borrow keyboard focus without activating the app or switching the user’s Space.
         panel.makeKeyAndOrderFront(nil)
-        editor.focusActivity()
+        editor.focusForm()
     }
 
     private func showBackdrops() {
@@ -270,25 +270,36 @@ private final class CheckInEditorController: NSViewController {
         progress.widthAnchor.constraint(equalTo: progressStack.widthAnchor).isActive = true
         progress.heightAnchor.constraint(equalToConstant: 5).isActive = true
 
+        category.addItems(withTitles: ["Choose a category"] + HourCategory.allCases.map(\.rawValue))
+        category.setAccessibilityLabel("Category")
+        category.font = .systemFont(ofSize: 13)
+        let categoryGroup = NSStackView(views: [
+            label("Category", font: .systemFont(ofSize: 14, weight: .medium)), category
+        ])
+        categoryGroup.orientation = .vertical
+        categoryGroup.alignment = .leading
+        categoryGroup.spacing = 9
+        category.widthAnchor.constraint(equalTo: categoryGroup.widthAnchor).isActive = true
+        category.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        deepWork.state = .on
+        deepWork.setAccessibilityLabel("Deep work hour")
+        deepWork.target = self
+        deepWork.action = #selector(updateButtonTitle)
+        let deepWorkRow = NSStackView(views: [deepWork, label("Deep work hour", font: .systemFont(ofSize: 14, weight: .medium))])
+        deepWorkRow.spacing = 12
+        deepWorkRow.setContentHuggingPriority(.required, for: .horizontal)
+        let metadata = NSStackView(views: [categoryGroup, deepWorkRow])
+        metadata.alignment = .bottom
+        metadata.spacing = 24
+        stack.addArrangedSubview(metadata)
+        metadata.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+
         addAnswer("What did you accomplish?", text: activity, height: 92, to: stack)
         addAnswer("What pulled your attention away?", text: distractions, height: 56, to: stack)
         let hint = label("No distractions? Write ‘None’.", font: .systemFont(ofSize: 11))
         hint.textColor = CheckInPalette.muted
         stack.addArrangedSubview(hint)
         stack.setCustomSpacing(9, after: stack.arrangedSubviews[stack.arrangedSubviews.count - 2])
-
-        category.addItems(withTitles: ["Choose a category"] + HourCategory.allCases.map(\.rawValue))
-        category.setAccessibilityLabel("Category")
-        category.font = .systemFont(ofSize: 13)
-        let metadata = NSStackView(views: [label("Category", font: .systemFont(ofSize: 12, weight: .medium)), category])
-        metadata.spacing = 14
-        stack.addArrangedSubview(metadata)
-        deepWork.setAccessibilityLabel("Deep work hour")
-        deepWork.target = self
-        deepWork.action = #selector(updateButtonTitle)
-        let deepWorkRow = NSStackView(views: [deepWork, label("Deep work hour", font: .systemFont(ofSize: 14, weight: .medium))])
-        deepWorkRow.spacing = 12
-        stack.addArrangedSubview(deepWorkRow)
 
         let preparationHeading = label("Daily preparation", font: .systemFont(ofSize: 12, weight: .medium))
         preparationHeading.textColor = CheckInPalette.muted
@@ -337,9 +348,6 @@ private final class CheckInEditorController: NSViewController {
         stack.addArrangedSubview(footer)
         footer.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
         submitButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 185).isActive = true
-        let keyboard = label("Tab to move   ·   ⌘Return to save   ·   Esc to return to your work", font: .systemFont(ofSize: 11))
-        keyboard.textColor = CheckInPalette.muted
-        stack.addArrangedSubview(keyboard)
         updateFocusOrder()
         updateButtonTitle()
     }
@@ -359,7 +367,7 @@ private final class CheckInEditorController: NSViewController {
 
     private func updateFocusOrder() {
         // Follow the visible rows: left checkbox, right checkbox, then the next row.
-        focusOrder = [activity, distractions, category, deepWork] + preparation + [submitButton, clearButton]
+        focusOrder = [category, deepWork, activity, distractions] + preparation + [submitButton, clearButton]
     }
 
     private func label(_ text: String, font: NSFont = .systemFont(ofSize: 13)) -> NSTextField {
@@ -397,14 +405,14 @@ private final class CheckInEditorController: NSViewController {
         return scroll
     }
 
-    func focusActivity() {
+    func focusForm() {
         dateLabel.stringValue = Date().formatted(.dateTime.weekday(.wide).month(.wide).day()) + " · Saved locally, even offline"
         let hours = store.deepWorkHours(on: Date())
         progress.hours = hours
         progressLabel.stringValue = hours >= 4 ? "\(hours) deep work hours today · Day won" :
             "\(hours) of 4 deep work hours today · \(4 - hours) to win the day"
-        view.window?.makeFirstResponder(activity)
-        activity.scrollToVisible(activity.bounds)
+        view.window?.makeFirstResponder(category)
+        category.scrollToVisible(category.bounds)
     }
 
     func moveFocus(backwards: Bool) {
@@ -420,7 +428,7 @@ private final class CheckInEditorController: NSViewController {
 
     @objc private func updateButtonTitle() {
         let title = deepWork.state == .on ? "Save + 1 deep work hour" : "Save this hour"
-        submitButton.attributedTitle = NSAttributedString(string: title, attributes: [
+        submitButton.attributedTitle = NSAttributedString(string: title + "   ⌘ + Enter", attributes: [
             .foregroundColor: CheckInPalette.background,
             .font: NSFont.systemFont(ofSize: 14, weight: .semibold)
         ])
@@ -431,11 +439,11 @@ private final class CheckInEditorController: NSViewController {
         activity.string = ""
         distractions.string = ""
         category.selectItem(at: 0)
-        deepWork.state = .off
+        deepWork.state = .on
         preparation.forEach { $0.state = .off }
         errorLabel.isHidden = true
         updateButtonTitle()
-        focusActivity()
+        focusForm()
     }
 
     @objc func submit() {
@@ -459,7 +467,7 @@ private final class CheckInEditorController: NSViewController {
         }
         guard store.finishHour(id: submissionID, form: form) else {
             showError(store.lastError ?? "Couldn’t save your check-in.")
-            focusActivity()
+            focusForm()
             return
         }
         let hours = store.deepWorkHours(on: form.date)
