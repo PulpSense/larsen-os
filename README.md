@@ -46,7 +46,7 @@ On its first installed launch, Digital Wall enables **Open Digital Wall at login
 ### Track deep work
 
 1. Open **Deep Work Hours** in the app or place its floating panel on the desktop.
-2. At the end of each completed hour, click **+** on the desktop panel or **Finish hour** in the app. Choose a date and category, describe your activity and distractions (enter “None” if there were none), and check the daily preparation items you completed. Check **This was a deep work hour** to also log one hour in the tracker; ordinary check-ins are saved and synced without increasing deep work hours. The answers and hour are saved together on your Mac, even offline. Deep work is intentionally recorded in whole hours.
+2. At the end of each completed hour, click **+** on the desktop panel or **Finish hour** in the app. Choose a category, describe your activity and distractions (enter “None” if there were none), and check the daily preparation items you completed. **Deep work hour** is enabled by default to also log one hour in the tracker. Turn it off for an ordinary check-in, which is saved and synced without increasing deep work hours. The answers and hour are saved together on your Mac, even offline. Deep work is intentionally recorded in whole hours.
 3. The calendar distinguishes zero-hour days from partial days. Hours one through three become progressively stronger indigo cells.
 4. The fourth hour wins the day, advances the day streak, changes the calendar into its earned-color range, and launches the full-screen **DAY WON** celebration.
 5. Keep logging after four hours to get distinct 5H, 6H, 7H, 8H, and evolving 9H+ celebrations. The calendar color continues progressing so an exceptional day remains visually different from a minimum win.
