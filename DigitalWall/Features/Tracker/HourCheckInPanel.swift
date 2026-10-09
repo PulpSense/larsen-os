@@ -72,8 +72,7 @@ final class HourCheckInPanelController {
                 })
         }
         guard let editor else { return }
-        let size = NSSize(width: min(680, screen.visibleFrame.width - 40),
-                          height: min(780, screen.visibleFrame.height - 40))
+        let size = editor.formSize(availableSize: screen.visibleFrame.size)
         let frame = NSRect(x: screen.visibleFrame.midX - size.width / 2,
                            y: screen.visibleFrame.midY - size.height / 2, width: size.width, height: size.height)
         let panel = CheckInPanel(contentRect: frame, styleMask: [.titled, .fullSizeContentView, .nonactivatingPanel],
@@ -186,7 +185,7 @@ private final class CheckInPanel: NSPanel {
 }
 
 @MainActor
-private final class CheckInEditorController: NSViewController {
+private final class CheckInEditorController: NSViewController, NSTextViewDelegate {
     private let store: WallStore
     private let dismiss: () -> Void
     private let celebrate: (Int) -> Void
@@ -197,12 +196,17 @@ private final class CheckInEditorController: NSViewController {
     private let distractions = NSTextView()
     private var preparation: [NSButton] = []
     private let errorLabel = NSTextField(wrappingLabelWithString: "")
-    private let submitButton = NSButton(title: "Save this hour", target: nil, action: nil)
+    private let submitButton = NSButton(title: "Submit", target: nil, action: nil)
     private var focusOrder: [NSView] = []
     private let dateLabel = NSTextField(labelWithString: "")
     private let progressLabel = NSTextField(labelWithString: "")
     private let progress = CheckInProgressView()
     private let preparationStack = NSStackView()
+    private let formScroll = NSScrollView()
+    private let formDocument = CheckInDocumentView()
+    private let formStack = NSStackView()
+    private var documentHeight: NSLayoutConstraint!
+    private var answerHeights: [(constraint: NSLayoutConstraint, preferred: CGFloat)] = []
     private let clearButton = NSButton(title: "Clear", target: nil, action: nil)
 
     init(store: WallStore, dismiss: @escaping () -> Void, celebrate: @escaping (Int) -> Void) {
@@ -214,35 +218,37 @@ private final class CheckInEditorController: NSViewController {
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
     override func loadView() {
-        let background = CheckInBackgroundView(frame: NSRect(x: 0, y: 0, width: 680, height: 780))
+        let background = CheckInBackgroundView(frame: NSRect(x: 0, y: 0, width: 680, height: 640))
         background.appearance = NSAppearance(named: .darkAqua)
         view = background
-        let scroll = NSScrollView()
-        scroll.drawsBackground = false
-        scroll.hasVerticalScroller = true
-        scroll.translatesAutoresizingMaskIntoConstraints = false
-        background.addSubview(scroll)
+        formScroll.drawsBackground = false
+        formScroll.automaticallyAdjustsContentInsets = false
+        formScroll.scrollerStyle = .overlay
+        formScroll.autohidesScrollers = true
+        formScroll.translatesAutoresizingMaskIntoConstraints = false
+        background.addSubview(formScroll)
+        formDocument.translatesAutoresizingMaskIntoConstraints = false
+        formScroll.documentView = formDocument
+        documentHeight = formDocument.heightAnchor.constraint(equalToConstant: 640)
         NSLayoutConstraint.activate([
-            scroll.leadingAnchor.constraint(equalTo: background.leadingAnchor),
-            scroll.trailingAnchor.constraint(equalTo: background.trailingAnchor),
-            scroll.topAnchor.constraint(equalTo: background.topAnchor),
-            scroll.bottomAnchor.constraint(equalTo: background.bottomAnchor)
+            formScroll.leadingAnchor.constraint(equalTo: background.leadingAnchor),
+            formScroll.trailingAnchor.constraint(equalTo: background.trailingAnchor),
+            formScroll.topAnchor.constraint(equalTo: background.topAnchor),
+            formScroll.bottomAnchor.constraint(equalTo: background.bottomAnchor),
+            formDocument.widthAnchor.constraint(equalTo: formScroll.contentView.widthAnchor),
+            documentHeight
         ])
-        let document = CheckInDocumentView()
-        document.translatesAutoresizingMaskIntoConstraints = false
-        scroll.documentView = document
-        document.widthAnchor.constraint(equalTo: scroll.contentView.widthAnchor).isActive = true
-        let stack = NSStackView()
+        let stack = formStack
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 18
         stack.translatesAutoresizingMaskIntoConstraints = false
-        document.addSubview(stack)
+        formDocument.addSubview(stack)
         NSLayoutConstraint.activate([
-            stack.leadingAnchor.constraint(equalTo: document.leadingAnchor, constant: 32),
-            stack.trailingAnchor.constraint(equalTo: document.trailingAnchor, constant: -32),
-            stack.topAnchor.constraint(equalTo: document.topAnchor, constant: 32),
-            stack.bottomAnchor.constraint(equalTo: document.bottomAnchor, constant: -28)
+            stack.leadingAnchor.constraint(equalTo: formDocument.leadingAnchor, constant: 32),
+            stack.trailingAnchor.constraint(equalTo: formDocument.trailingAnchor, constant: -32),
+            stack.topAnchor.constraint(equalTo: formDocument.topAnchor, constant: 20),
+            stack.bottomAnchor.constraint(equalTo: formDocument.bottomAnchor, constant: -20)
         ])
         let header = NSStackView()
         header.orientation = .vertical
@@ -271,6 +277,8 @@ private final class CheckInEditorController: NSViewController {
         progress.heightAnchor.constraint(equalToConstant: 5).isActive = true
 
         category.addItems(withTitles: ["Choose a category"] + HourCategory.allCases.map(\.rawValue))
+        category.target = self
+        category.action = #selector(updateClearVisibility)
         category.setAccessibilityLabel("Category")
         category.font = .systemFont(ofSize: 13)
         let categoryGroup = NSStackView(views: [
@@ -282,9 +290,9 @@ private final class CheckInEditorController: NSViewController {
         category.widthAnchor.constraint(equalTo: categoryGroup.widthAnchor).isActive = true
         category.setContentHuggingPriority(.defaultLow, for: .horizontal)
         deepWork.state = .on
-        deepWork.setAccessibilityLabel("Deep work hour")
         deepWork.target = self
-        deepWork.action = #selector(updateButtonTitle)
+        deepWork.action = #selector(updateClearVisibility)
+        deepWork.setAccessibilityLabel("Deep work hour")
         let deepWorkRow = NSStackView(views: [deepWork, label("Deep work hour", font: .systemFont(ofSize: 14, weight: .medium))])
         deepWorkRow.spacing = 12
         deepWorkRow.setContentHuggingPriority(.required, for: .horizontal)
@@ -311,7 +319,7 @@ private final class CheckInEditorController: NSViewController {
         for title in ["I read the 10X Rule.", "I reviewed my Top Goals.",
                       "I reviewed the 3.0 Version of Myself.", "I read my Motivation List out loud.",
                       "I read my Thought Habits.", "I reviewed my vision board."] {
-            let checkbox = NSButton(checkboxWithTitle: title, target: nil, action: nil)
+            let checkbox = NSButton(checkboxWithTitle: title, target: self, action: #selector(updateClearVisibility))
             checkbox.font = .systemFont(ofSize: 12)
             preparation.append(checkbox)
         }
@@ -332,6 +340,9 @@ private final class CheckInEditorController: NSViewController {
         clearButton.target = self
         clearButton.action = #selector(clearForm)
         clearButton.isBordered = false
+        clearButton.font = .systemFont(ofSize: 13)
+        clearButton.setAccessibilityLabel("Clear form")
+        clearButton.isHidden = true
         clearButton.contentTintColor = CheckInPalette.muted
         submitButton.target = self
         submitButton.action = #selector(submit)
@@ -344,12 +355,40 @@ private final class CheckInEditorController: NSViewController {
         submitButton.keyEquivalentModifierMask = [.command]
         let spacer = NSView()
         spacer.setContentHuggingPriority(.init(1), for: .horizontal)
-        let footer = NSStackView(views: [clearButton, spacer, submitButton])
+        let footer = NSStackView(views: [spacer, clearButton, submitButton])
+        footer.spacing = 12
+        footer.alignment = .centerY
         stack.addArrangedSubview(footer)
         footer.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
         submitButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 185).isActive = true
         updateFocusOrder()
         updateButtonTitle()
+    }
+
+    func formSize(availableSize: NSSize) -> NSSize {
+        loadViewIfNeeded()
+        let width = min(680, availableSize.width - 40)
+        let availableHeight = availableSize.height - 40
+        let widthConstraint = formStack.widthAnchor.constraint(equalToConstant: width - 64)
+        widthConstraint.isActive = true
+        defer { widthConstraint.isActive = false }
+        answerHeights.forEach { $0.constraint.constant = $0.preferred }
+        var height = ceil(formStack.fittingSize.height) + 40
+
+        // Use the text areas' spare height before making the form scrollable.
+        var overflow = max(0, height - availableHeight)
+        for answer in answerHeights {
+            let reduction = min(overflow, answer.preferred - 44)
+            answer.constraint.constant = answer.preferred - reduction
+            overflow -= reduction
+        }
+        height = ceil(formStack.fittingSize.height) + 40
+        documentHeight.constant = height
+        formScroll.hasVerticalScroller = height > availableHeight
+        if !formScroll.hasVerticalScroller {
+            formScroll.contentView.scroll(to: .zero)
+        }
+        return NSSize(width: width, height: min(height, availableHeight))
     }
 
     private func addAnswer(_ title: String, text: NSTextView, height: CGFloat, to stack: NSStackView) {
@@ -367,7 +406,8 @@ private final class CheckInEditorController: NSViewController {
 
     private func updateFocusOrder() {
         // Follow the visible rows: left checkbox, right checkbox, then the next row.
-        focusOrder = [category, deepWork, activity, distractions] + preparation + [submitButton, clearButton]
+        focusOrder = [category, deepWork, activity, distractions] + preparation
+            + (clearButton.isHidden ? [] : [clearButton]) + [submitButton]
     }
 
     private func label(_ text: String, font: NSFont = .systemFont(ofSize: 13)) -> NSTextField {
@@ -389,7 +429,12 @@ private final class CheckInEditorController: NSViewController {
         scroll.hasVerticalScroller = true
         scroll.documentView = text
         scroll.translatesAutoresizingMaskIntoConstraints = false
-        scroll.heightAnchor.constraint(equalToConstant: height).isActive = true
+        let preferredHeight = scroll.heightAnchor.constraint(equalToConstant: height)
+        preferredHeight.priority = .defaultHigh
+        preferredHeight.isActive = true
+        answerHeights.append((preferredHeight, height))
+        scroll.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
+        text.delegate = self
         text.font = .systemFont(ofSize: 14)
         text.backgroundColor = NSColor(calibratedWhite: 0.12, alpha: 1)
         text.textColor = CheckInPalette.text
@@ -406,7 +451,7 @@ private final class CheckInEditorController: NSViewController {
     }
 
     func focusForm() {
-        dateLabel.stringValue = Date().formatted(.dateTime.weekday(.wide).month(.wide).day()) + " · Saved locally, even offline"
+        dateLabel.stringValue = Date().formatted(.dateTime.weekday(.wide).month(.wide).day())
         let hours = store.deepWorkHours(on: Date())
         progress.hours = hours
         progressLabel.stringValue = hours >= 4 ? "\(hours) deep work hours today · Day won" :
@@ -427,11 +472,22 @@ private final class CheckInEditorController: NSViewController {
     }
 
     @objc private func updateButtonTitle() {
-        let title = deepWork.state == .on ? "Save + 1 deep work hour" : "Save this hour"
-        submitButton.attributedTitle = NSAttributedString(string: title + "   ⌘ + Enter", attributes: [
+        submitButton.attributedTitle = NSAttributedString(string: "Submit   ⌘ + Enter", attributes: [
             .foregroundColor: CheckInPalette.background,
             .font: NSFont.systemFont(ofSize: 14, weight: .semibold)
         ])
+    }
+
+    func textDidChange(_ notification: Notification) {
+        updateClearVisibility()
+    }
+
+    @objc private func updateClearVisibility() {
+        let hasDraft = category.indexOfSelectedItem > 0 || deepWork.state != .on
+            || !activity.string.isEmpty || !distractions.string.isEmpty
+            || preparation.contains { $0.state == .on }
+        clearButton.isHidden = !hasDraft
+        updateFocusOrder()
     }
 
     @objc private func clearForm() {
@@ -441,7 +497,9 @@ private final class CheckInEditorController: NSViewController {
         category.selectItem(at: 0)
         deepWork.state = .on
         preparation.forEach { $0.state = .off }
+        updateClearVisibility()
         errorLabel.isHidden = true
+        resizeToFitForm()
         updateButtonTitle()
         focusForm()
     }
@@ -483,6 +541,16 @@ private final class CheckInEditorController: NSViewController {
     private func showError(_ message: String) {
         errorLabel.stringValue = message
         errorLabel.isHidden = false
+        resizeToFitForm()
+    }
+
+    private func resizeToFitForm() {
+        if let window = view.window, let screen = window.screen {
+            let size = formSize(availableSize: screen.visibleFrame.size)
+            window.contentMaxSize = size
+            window.contentMinSize = size
+            window.setContentSize(size)
+        }
     }
 }
 
