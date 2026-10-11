@@ -309,18 +309,16 @@ private final class CheckInEditorController: NSViewController, NSTextViewDelegat
         stack.addArrangedSubview(hint)
         stack.setCustomSpacing(9, after: stack.arrangedSubviews[stack.arrangedSubviews.count - 2])
 
-        let preparationHeading = label("Daily preparation", font: .systemFont(ofSize: 12, weight: .medium))
+        let preparationHeading = label("After the hour", font: .systemFont(ofSize: 14, weight: .medium))
         preparationHeading.textColor = CheckInPalette.muted
         stack.addArrangedSubview(preparationHeading)
         stack.setCustomSpacing(10, after: preparationHeading)
         preparationStack.orientation = .vertical
         preparationStack.alignment = .leading
         preparationStack.spacing = 10
-        for title in ["I read the 10X Rule.", "I reviewed my Top Goals.",
-                      "I reviewed the 3.0 Version of Myself.", "I read my Motivation List out loud.",
-                      "I read my Thought Habits.", "I reviewed my vision board."] {
+        for title in ["I reviewed my top goals.", "I reviewed my vision board."] {
             let checkbox = NSButton(checkboxWithTitle: title, target: self, action: #selector(updateClearVisibility))
-            checkbox.font = .systemFont(ofSize: 12)
+            checkbox.font = .systemFont(ofSize: 14)
             preparation.append(checkbox)
         }
         for index in stride(from: 0, to: preparation.count, by: 2) {
@@ -510,10 +508,8 @@ private final class CheckInEditorController: NSViewController, NSTextViewDelegat
             date: Date(), category: HourCategory(rawValue: category.titleOfSelectedItem ?? ""),
             isDeepWork: deepWork.state == .on, activity: activity.string, distractions: distractions.string,
             preparation: DailyPreparation(
-                read10XRule: preparation[0].state == .on, reviewedTopGoals: preparation[1].state == .on,
-                reviewedVersionOfMyself: preparation[2].state == .on,
-                readMotivationListOutLoud: preparation[3].state == .on,
-                readThoughtHabits: preparation[4].state == .on, reviewedVisionBoard: preparation[5].state == .on
+                reviewedTopGoals: preparation[0].state == .on,
+                reviewedVisionBoard: preparation[1].state == .on
             )
         )
         if let message = form.validationMessage {
