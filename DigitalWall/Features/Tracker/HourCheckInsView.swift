@@ -33,13 +33,9 @@ struct HourCheckInsView: View {
                     answerField("What did you do during this hour?", text: $form.activity)
                     answerField("How many times was I distracted, and if I was, how?", text: $form.distractions)
                     Divider()
-                    Text("Daily preparation").font(.headline)
+                    Text("After the hour").font(.headline)
                     VStack(alignment: .leading, spacing: 8) {
-                        Toggle("I read the 10X Rule.", isOn: $form.preparation.read10XRule)
-                        Toggle("I reviewed my Top Goals.", isOn: $form.preparation.reviewedTopGoals)
-                        Toggle("I reviewed the 3.0 Version of Myself.", isOn: $form.preparation.reviewedVersionOfMyself)
-                        Toggle("I read my Motivation List out loud.", isOn: $form.preparation.readMotivationListOutLoud)
-                        Toggle("I read my Thought Habits.", isOn: $form.preparation.readThoughtHabits)
+                        Toggle("I reviewed my top goals.", isOn: $form.preparation.reviewedTopGoals)
                         Toggle("I reviewed my vision board.", isOn: $form.preparation.reviewedVisionBoard)
                     }
                     .toggleStyle(.checkbox)
