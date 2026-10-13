@@ -405,7 +405,7 @@ private final class CheckInEditorController: NSViewController, NSTextViewDelegat
     private func updateFocusOrder() {
         // Follow the visible rows: left checkbox, right checkbox, then the next row.
         focusOrder = [category, deepWork, activity, distractions] + preparation
-            + (clearButton.isHidden ? [] : [clearButton]) + [submitButton]
+            + [submitButton] + (clearButton.isHidden ? [] : [clearButton])
     }
 
     private func label(_ text: String, font: NSFont = .systemFont(ofSize: 13)) -> NSTextField {
