@@ -13,8 +13,11 @@ struct DigitalWallApp: App {
                 .frame(minWidth: 820, minHeight: 600)
                 .modifier(MainWindowRegistrationModifier())
                 .onAppear {
+                    FocusTimerController.shared.configure {
+                        HourCheckInPanelController.shared.present(store: store)
+                    }
                     HourCheckInPanelController.shared.rememberActiveApplication()
-                    CheckInShortcut.shared.start {
+                    GlobalShortcut.checkIn.start {
                         HourCheckInPanelController.shared.toggle(store: store)
                     }
                     PhraseDesktopPanelController.shared.restoreIfEnabled(store: store)
@@ -88,6 +91,22 @@ struct DigitalWallApp: App {
                     ConsistencyDesktopPanelController.shared.present(store: store)
                 }
 
+                Button("Start one-hour timer") {
+                    FocusTimerController.shared.startDefaultOrShow()
+                }
+
+                Button("Start timer…") {
+                    DispatchQueue.main.async { FocusTimerController.shared.presentLauncher() }
+                }
+
+                Button("Timer controls…") {
+                    DispatchQueue.main.async { FocusTimerController.shared.show() }
+                }
+
+                Button("Preview timer completion alert") {
+                    FocusTimerController.shared.previewAlert()
+                }
+
                 Button("Finish Hour") {
                     HourCheckInPanelController.shared.present(store: store)
                 }
@@ -151,6 +170,7 @@ final class DigitalWallAppDelegate: NSObject, NSApplicationDelegate {
             object: nil
         )
 
+        FocusTimerController.shared.install()
         LaunchAtLoginController.shared.prepareInstalledApp()
 
         if launchedAsLoginItem {
@@ -190,7 +210,8 @@ final class DigitalWallAppDelegate: NSObject, NSApplicationDelegate {
 
 private struct SettingsView: View {
     @StateObject private var launchAtLogin = LaunchAtLoginController.shared
-    @StateObject private var checkInShortcut = CheckInShortcut.shared
+    @StateObject private var checkInShortcut = GlobalShortcut.checkIn
+    @StateObject private var timerShortcut = GlobalShortcut.timer
     @AppStorage("yearProgressVisualization") private var yearProgressVisualization = YearProgressVisualization.ring.rawValue
 
     var body: some View {
@@ -202,20 +223,29 @@ private struct SettingsView: View {
 
             Divider()
 
-            Toggle("Enable global Finish Hour shortcut", isOn: Binding(
-                get: { checkInShortcut.isEnabled }, set: { checkInShortcut.setEnabled($0) }
-            ))
-            Picker("Shortcut", selection: Binding(
-                get: { checkInShortcut.combination }, set: { checkInShortcut.setCombination($0) }
-            )) {
-                ForEach(CheckInShortcutCombination.allCases) { shortcut in
-                    Text(shortcut.title).tag(shortcut)
-                }
+            Text("Keyboard shortcuts").font(.headline)
+            HStack {
+                Toggle("Timer", isOn: Binding(
+                    get: { timerShortcut.isEnabled }, set: { timerShortcut.setEnabled($0) }
+                ))
+                Spacer()
+                ShortcutRecorder(shortcut: timerShortcut)
             }
-            .disabled(!checkInShortcut.isEnabled)
+            if let error = timerShortcut.errorMessage {
+                Text(error).font(.caption).foregroundStyle(.red)
+            }
+            HStack {
+                Toggle("Finish hour", isOn: Binding(
+                    get: { checkInShortcut.isEnabled }, set: { checkInShortcut.setEnabled($0) }
+                ))
+                Spacer()
+                ShortcutRecorder(shortcut: checkInShortcut)
+            }
             if let error = checkInShortcut.errorMessage {
                 Text(error).font(.caption).foregroundStyle(.red)
             }
+            Text("Click a shortcut to change it. Press Escape to cancel.")
+                .font(.caption).foregroundStyle(.secondary)
 
             Divider()
 
