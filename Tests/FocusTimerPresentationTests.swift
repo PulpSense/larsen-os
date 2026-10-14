@@ -6,7 +6,8 @@ enum FocusTimerPresentationTests {
         let app = NSApplication.shared
         app.setActivationPolicy(.accessory)
         let controller = FocusTimerController.shared
-        controller.install()
+        // Drive local events explicitly; clicks in unrelated apps must not interrupt this test.
+        controller.install(observeExternalClicks: false)
         controller.reset()
         controller.startDefaultOrShow()
         let neighbor = NSStatusBar.system.statusItem(withLength: 24)
@@ -106,7 +107,7 @@ enum FocusTimerPresentationTests {
         precondition(breakAlerts.count == NSScreen.screens.count)
         precondition(breakAlerts.allSatisfy { $0.ignoresMouseEvents && !$0.canBecomeKey })
         try? await Task.sleep(for: .milliseconds(3_200))
-        precondition(breakAlerts.allSatisfy { $0.isVisible }, "Break banners must outlast the halo.")
+        precondition(breakAlerts.allSatisfy { $0.isVisible }, "Break banners must outlast the halo; phase=\(controller.session.phase).")
         controller.refresh(at: breakFinish.addingTimeInterval(60))
         precondition(controller.session.phase == .completed, "Break completion must wait for acknowledgement.")
         let click = NSEvent.mouseEvent(with: .leftMouseDown, location: .zero, modifierFlags: [],

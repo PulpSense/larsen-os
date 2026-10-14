@@ -19,11 +19,13 @@ final class FocusTimerController: NSObject, ObservableObject {
     private let glow = TimerCompletionGlow()
     private let storageKey = "focusTimerSession.v1"
     private var checkIn: (() -> Void)?
+    private var observesExternalClicks = true
 
     func configure(checkIn: @escaping () -> Void) { self.checkIn = checkIn }
 
-    func install() {
+    func install(observeExternalClicks: Bool = true) {
         guard ticker == nil else { return }
+        observesExternalClicks = observeExternalClicks
         if let data = UserDefaults.standard.data(forKey: storageKey),
            let saved = try? JSONDecoder().decode(FocusTimer.self, from: data) {
             session = saved
@@ -112,7 +114,7 @@ final class FocusTimerController: NSObject, ObservableObject {
             if let self, event.window !== self.launcherPanel { self.dismissLauncher(restoringFocus: false) }
             return event
         }) { launcherMonitors.append(monitor) }
-        if let monitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown], handler: { [weak self] _ in
+        if observesExternalClicks, let monitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown], handler: { [weak self] _ in
             Task { @MainActor in self?.dismissLauncher(restoringFocus: false) }
         }) { launcherMonitors.append(monitor) }
     }
@@ -187,7 +189,7 @@ final class FocusTimerController: NSObject, ObservableObject {
     private func presentCompletion(playSound: Bool = true) {
         let isBreak = session.kind == .break
         if isBreak && playSound { NSSound(named: "Glass")?.play() }
-        glow.present(persistent: isBreak, onDismiss: { [weak self] in self?.reset() })
+        glow.present(persistent: isBreak, observeExternalClicks: observesExternalClicks, onDismiss: { [weak self] in self?.reset() })
     }
 
     @objc private func didWake() { refresh() }
@@ -649,7 +651,7 @@ private final class TimerCompletionGlow {
     private var dismissal: Task<Void, Never>?
     private var clickMonitors: [Any] = []
 
-    func present(persistent: Bool = false, onDismiss: (() -> Void)? = nil) {
+    func present(persistent: Bool = false, observeExternalClicks: Bool = true, onDismiss: (() -> Void)? = nil) {
         dismiss()
         let bannerScreen = NSScreen.screens.first {
             NSMouseInRect(NSEvent.mouseLocation, $0.frame, false)
@@ -684,7 +686,7 @@ private final class TimerCompletionGlow {
                 finish()
                 return event
             }) { clickMonitors.append(monitor) }
-            if let monitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown], handler: { _ in
+            if observeExternalClicks, let monitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown], handler: { _ in
                 Task { @MainActor in finish() }
             }) { clickMonitors.append(monitor) }
             return
