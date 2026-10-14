@@ -39,6 +39,8 @@
 		A00100000000000000000027 /* HourCheckInsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00100000000000000000027 /* HourCheckInsView.swift */; };
 		A00100000000000000000028 /* CheckInShortcut.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00100000000000000000028 /* CheckInShortcut.swift */; };
 		A00100000000000000000029 /* HourCheckInPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00100000000000000000029 /* HourCheckInPanel.swift */; };
+		A00100000000000000000030 /* FocusTimerController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00100000000000000000030 /* FocusTimerController.swift */; };
+		A00100000000000000000031 /* FocusTimer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00100000000000000000031 /* FocusTimer.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -78,6 +80,8 @@
 		B00100000000000000000027 /* HourCheckInsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HourCheckInsView.swift; sourceTree = "<group>"; };
 		B00100000000000000000028 /* CheckInShortcut.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckInShortcut.swift; sourceTree = "<group>"; };
 		B00100000000000000000029 /* HourCheckInPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HourCheckInPanel.swift; sourceTree = "<group>"; };
+		B00100000000000000000030 /* FocusTimerController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusTimerController.swift; sourceTree = "<group>"; };
+		B00100000000000000000031 /* FocusTimer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusTimer.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -116,6 +120,7 @@
 		F00100000000000000000002 /* App */ = {
 			isa = PBXGroup;
 			children = (
+				B00100000000000000000030 /* FocusTimerController.swift */,
 				B00100000000000000000001 /* DigitalWallApp.swift */,
 				B00100000000000000000002 /* DashboardView.swift */,
 				B00100000000000000000003 /* WallStore.swift */,
@@ -129,6 +134,7 @@
 		F00100000000000000000003 /* Shared */ = {
 			isa = PBXGroup;
 			children = (
+				B00100000000000000000031 /* FocusTimer.swift */,
 				B00100000000000000000004 /* AppConfiguration.swift */,
 				B00100000000000000000024 /* DesktopWidgetVisibility.swift */,
 				B00100000000000000000005 /* WallState.swift */,
@@ -274,6 +280,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A00100000000000000000031 /* FocusTimer.swift in Sources */,
+				A00100000000000000000030 /* FocusTimerController.swift in Sources */,
 				A00100000000000000000001 /* DigitalWallApp.swift in Sources */,
 				A00100000000000000000002 /* DashboardView.swift in Sources */,
 				A00100000000000000000003 /* WallStore.swift in Sources */,
