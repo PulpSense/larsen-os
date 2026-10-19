@@ -46,11 +46,11 @@ final class HourCheckInPanelController {
     }
 
     func present(store: WallStore, source: HourCheckInPresentationSource = .app, showVisionBoard: Bool? = nil) {
-        self.showVisionBoard = showVisionBoard
         if panel?.isVisible == true {
             panel?.makeKeyAndOrderFront(nil)
             return
         }
+        self.showVisionBoard = showVisionBoard
         rememberActiveApplication()
         let frontmost = NSWorkspace.shared.frontmostApplication
         let openedAfterURLActivation = source == .externalURL
