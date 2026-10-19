@@ -15,6 +15,7 @@ final class HourCheckInPanelController {
     private var screenObserver: NSObjectProtocol?
     private weak var previousKeyWindow: NSWindow?
     private var presentationID = UUID()
+    private var showVisionBoard: Bool?
 
     private var activationObserver: NSObjectProtocol?
     private var lastExternalApplication: NSRunningApplication?
@@ -44,7 +45,8 @@ final class HourCheckInPanelController {
         if panel?.isVisible == true { dismiss() } else { present(store: store) }
     }
 
-    func present(store: WallStore, source: HourCheckInPresentationSource = .app) {
+    func present(store: WallStore, source: HourCheckInPresentationSource = .app, showVisionBoard: Bool? = nil) {
+        self.showVisionBoard = showVisionBoard
         if panel?.isVisible == true {
             panel?.makeKeyAndOrderFront(nil)
             return
@@ -62,13 +64,14 @@ final class HourCheckInPanelController {
         guard let screen else { return }
         if editor == nil {
             editor = CheckInEditorController(store: store, dismiss: { [weak self] in self?.dismiss() },
-                celebrate: { [weak self] hours in
+                didSubmit: { [weak self] form in
                     guard let self else { return }
+                    let showVisionBoard = self.showVisionBoard
                     let restore = self.dismiss(restoringFocus: false)
-                    DeepWorkCelebrationPresenter.shared.present(hours: hours,
-                        streak: ConsistencyStreak.current(completedDays: store.completedDays, through: Date(),
-                                                          calendar: TrackerCalendar.calendar),
-                        hideApplicationOnDismiss: false, onDismiss: restore)
+                    VisionBoardPresenter.shared.presentAfterCheckIn(
+                        store: store, date: form.date, isDeepWork: form.isDeepWork,
+                        showVisionBoard: showVisionBoard, onDismiss: restore
+                    )
                 })
         }
         guard let editor else { return }
@@ -137,6 +140,7 @@ final class HourCheckInPanelController {
         screenObserver = nil
         previousApplication = nil
         previousKeyWindow = nil
+        showVisionBoard = nil
 
         // Wait until Escape’s event dispatch has unwound before handing activation back.
         let restore: () -> Void = { [weak self] in
@@ -188,7 +192,7 @@ private final class CheckInPanel: NSPanel {
 private final class CheckInEditorController: NSViewController, NSTextViewDelegate {
     private let store: WallStore
     private let dismiss: () -> Void
-    private let celebrate: (Int) -> Void
+    private let didSubmit: (HourCheckInForm) -> Void
     private var submissionID = UUID()
     private let category = NSPopUpButton()
     private let deepWork = NSSwitch()
@@ -209,10 +213,10 @@ private final class CheckInEditorController: NSViewController, NSTextViewDelegat
     private var answerHeights: [(constraint: NSLayoutConstraint, preferred: CGFloat)] = []
     private let clearButton = NSButton(title: "Clear", target: nil, action: nil)
 
-    init(store: WallStore, dismiss: @escaping () -> Void, celebrate: @escaping (Int) -> Void) {
+    init(store: WallStore, dismiss: @escaping () -> Void, didSubmit: @escaping (HourCheckInForm) -> Void) {
         self.store = store
         self.dismiss = dismiss
-        self.celebrate = celebrate
+        self.didSubmit = didSubmit
         super.init(nibName: nil, bundle: nil)
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -524,14 +528,13 @@ private final class CheckInEditorController: NSViewController, NSTextViewDelegat
             focusForm()
             return
         }
-        let hours = store.deepWorkHours(on: form.date)
         clearForm()
-        if form.isDeepWork, DeepWorkCelebrationMilestone.forHours(hours) != nil {
-            celebrate(hours)
-        } else {
-            dismiss()
-            HourCapturedToastPresenter.shared.present(hours: hours, isDeepWork: form.isDeepWork)
+        if !form.isDeepWork || DeepWorkCelebrationMilestone.forHours(store.deepWorkHours(on: form.date)) == nil {
+            HourCapturedToastPresenter.shared.present(
+                hours: store.deepWorkHours(on: form.date), isDeepWork: form.isDeepWork
+            )
         }
+        didSubmit(form)
     }
 
     private func showError(_ message: String) {

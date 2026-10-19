@@ -41,6 +41,62 @@ final class VisionBoardPresenter {
         }
     }
 
+    /// Keeps milestone feedback and focus restoration in the same submission sequence.
+    func presentAfterCheckIn(
+        store: WallStore,
+        date: Date,
+        isDeepWork: Bool,
+        showVisionBoard: Bool? = nil,
+        onDismiss: (() -> Void)? = nil
+    ) {
+        let shouldShowVisionBoard = showVisionBoard ?? CheckInFlowPreferences.manualVisionBoard
+        let showCarousel = { [self] in
+            guard shouldShowVisionBoard else { onDismiss?(); return }
+            let boardID = DashboardNavigation.shared.boardID(in: store)
+            let images = !store.visionBoardPrivacyEnabled
+                ? boardID.map { store.images(for: $0) } ?? []
+                : []
+            presentCarousel(images: images.shuffled(), onDismiss: onDismiss)
+        }
+        let hours = store.deepWorkHours(on: date)
+        if isDeepWork, Calendar.current.isDateInToday(date),
+           DeepWorkCelebrationMilestone.forHours(hours) != nil {
+            DeepWorkCelebrationPresenter.shared.present(
+                hours: hours,
+                streak: ConsistencyStreak.current(
+                    completedDays: store.completedDays, through: Date(), calendar: TrackerCalendar.calendar
+                ),
+                hideApplicationOnDismiss: false,
+                onDismiss: showCarousel
+            )
+        } else {
+            showCarousel()
+        }
+    }
+
+    func presentCarousel(images: [VisionImage], onDismiss: (() -> Void)? = nil) {
+        // Skip missing files rather than showing empty slides.
+        let items = images.compactMap { image -> PresentedVisionImage? in
+            let url = WallPersistence.imageURL(for: image)
+            guard NSImage(contentsOf: url) != nil else { return nil }
+            return PresentedVisionImage(
+                id: image.id.uuidString, url: url, phrase: image.phrase,
+                displayMode: image.displayMode, focalPoint: image.focalPoint
+            )
+        }
+        guard !items.isEmpty else { onDismiss?(); return }
+        overlay.present(
+            hideApplicationOnDismiss: false,
+            nonactivating: true,
+            preferredSize: NSSize(width: 840, height: 680),
+            dimBackground: true,
+            onDismiss: onDismiss,
+            dismissOnKeyDown: { _ in true }
+        ) { dismiss in
+            VisionBoardCarousel(images: items, dismiss: dismiss)
+        }
+    }
+
     func dismiss() {
         overlay.dismiss()
     }
@@ -133,5 +189,73 @@ private struct ImmersiveVisionBoard: View {
                 .delay(Double(index) * 0.055),
             value: appeared
         )
+    }
+}
+
+private struct VisionBoardCarousel: View {
+    let images: [PresentedVisionImage]
+    let dismiss: () -> Void
+    @State private var index = 0
+    @State private var finished = false
+
+    var body: some View {
+        let image = images[index]
+        ZStack {
+            Color(nsColor: .windowBackgroundColor)
+            if finished {
+                VStack(spacing: 16) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 52))
+                        .foregroundStyle(.green)
+                    Text("Vision board complete")
+                        .font(.title2.weight(.semibold))
+                    Text("Keep your vision in mind.")
+                        .foregroundStyle(.secondary)
+                }
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(24)
+            } else {
+                VStack(spacing: 16) {
+                    if let nsImage = NSImage(contentsOf: image.url) {
+                        Image(nsImage: nsImage)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
+                    if !image.phrase.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        Text(image.phrase)
+                            .font(.title2.weight(.semibold))
+                            .multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Text("\(index + 1) of \(images.count) · Press any key or click to return")
+                        .font(.callout)
+                        .foregroundStyle(.white.opacity(0.65))
+                }
+                .foregroundStyle(.white)
+                .padding(24)
+            }
+        }
+        .environment(\.colorScheme, .dark)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .contentShape(Rectangle())
+        .onTapGesture(perform: dismiss)
+        .task {
+            for nextIndex in images.indices.dropFirst() {
+                do { try await Task.sleep(for: .seconds(2)) }
+                catch { return }
+                guard !Task.isCancelled else { return }
+                index = nextIndex
+            }
+            do { try await Task.sleep(for: .seconds(2)) }
+            catch { return }
+            guard !Task.isCancelled else { return }
+            finished = true
+            do { try await Task.sleep(for: .seconds(2)) }
+            catch { return }
+            guard !Task.isCancelled else { return }
+            dismiss()
+        }
     }
 }

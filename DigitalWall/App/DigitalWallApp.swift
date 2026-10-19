@@ -13,8 +13,8 @@ struct DigitalWallApp: App {
                 .frame(minWidth: 820, minHeight: 600)
                 .modifier(MainWindowRegistrationModifier())
                 .onAppear {
-                    FocusTimerController.shared.configure {
-                        HourCheckInPanelController.shared.present(store: store)
+                    FocusTimerController.shared.configure { showVisionBoard in
+                        HourCheckInPanelController.shared.present(store: store, showVisionBoard: showVisionBoard)
                     }
                     HourCheckInPanelController.shared.rememberActiveApplication()
                     GlobalShortcut.checkIn.start {
@@ -209,86 +209,103 @@ final class DigitalWallAppDelegate: NSObject, NSApplicationDelegate {
 }
 
 private struct SettingsView: View {
+    @AppStorage(CheckInFlowPreferences.timerActionKey) private var timerCompletionAction = TimerCompletionAction.formAndVisionBoard
+    @AppStorage(CheckInFlowPreferences.manualVisionBoardKey) private var manualVisionBoard = true
     @StateObject private var launchAtLogin = LaunchAtLoginController.shared
     @StateObject private var checkInShortcut = GlobalShortcut.checkIn
     @StateObject private var timerShortcut = GlobalShortcut.timer
     @AppStorage("yearProgressVisualization") private var yearProgressVisualization = YearProgressVisualization.ring.rawValue
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            Label("Private by design", systemImage: "lock.fill")
-                .font(.headline)
-            Text("Your data is stored on this Mac. Hour check-ins are sent to your webhook only when you enable sync.")
-                .foregroundStyle(.secondary)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                Label("Private by design", systemImage: "lock.fill")
+                    .font(.headline)
+                Text("Your data is stored on this Mac. Hour check-ins are sent to your webhook only when you enable sync.")
+                    .foregroundStyle(.secondary)
 
-            Divider()
+                Divider()
 
-            Text("Keyboard shortcuts").font(.headline)
-            HStack {
-                Toggle("Timer", isOn: Binding(
-                    get: { timerShortcut.isEnabled }, set: { timerShortcut.setEnabled($0) }
-                ))
-                Spacer()
-                ShortcutRecorder(shortcut: timerShortcut)
-            }
-            if let error = timerShortcut.errorMessage {
-                Text(error).font(.caption).foregroundStyle(.red)
-            }
-            HStack {
-                Toggle("Finish hour", isOn: Binding(
-                    get: { checkInShortcut.isEnabled }, set: { checkInShortcut.setEnabled($0) }
-                ))
-                Spacer()
-                ShortcutRecorder(shortcut: checkInShortcut)
-            }
-            if let error = checkInShortcut.errorMessage {
-                Text(error).font(.caption).foregroundStyle(.red)
-            }
-            Text("Click a shortcut to change it. Press Escape to cancel.")
-                .font(.caption).foregroundStyle(.secondary)
-
-            Divider()
-
-            Picker("Year Elapsed visualization", selection: $yearProgressVisualization) {
-                ForEach(YearProgressVisualization.allCases) { option in
-                    Text(option.title).tag(option.rawValue)
-                }
-            }
-
-            Divider()
-
-            Toggle(
-                "Open Digital Wall at login",
-                isOn: Binding(
-                    get: { launchAtLogin.isRequested },
-                    set: { launchAtLogin.setEnabled($0) }
-                )
-            )
-
-            Text("Starts quietly, restores your desktop panels, and stays out of the Dock.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
-            if launchAtLogin.requiresApproval {
-                HStack {
-                    Text("macOS needs your approval before it can start automatically.")
-                        .font(.caption)
-                        .foregroundStyle(.orange)
-                    Spacer()
-                    Button("Open Login Items") {
-                        SMAppService.openSystemSettingsLoginItems()
+                Text("Timer and check-ins").font(.headline)
+                Picker("After the timer ends", selection: $timerCompletionAction) {
+                    ForEach(TimerCompletionAction.allCases, id: \.self) { action in
+                        Text(action.title).tag(action)
                     }
                 }
-            }
-
-            if let errorMessage = launchAtLogin.errorMessage {
-                Text(errorMessage)
+                Toggle("Show vision board after manual check-ins", isOn: $manualVisionBoard)
+                Text("Choose what happens when you click a completed timer. It pulses quietly until you are ready. This choice applies to new timers. Breaks keep their chime. Closing a form without submitting ends the sequence.")
                     .font(.caption)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(.secondary)
+
+                Divider()
+
+                Text("Keyboard shortcuts").font(.headline)
+                HStack {
+                    Toggle("Timer", isOn: Binding(
+                        get: { timerShortcut.isEnabled }, set: { timerShortcut.setEnabled($0) }
+                    ))
+                    Spacer()
+                    ShortcutRecorder(shortcut: timerShortcut)
+                }
+                if let error = timerShortcut.errorMessage {
+                    Text(error).font(.caption).foregroundStyle(.red)
+                }
+                HStack {
+                    Toggle("Finish hour", isOn: Binding(
+                        get: { checkInShortcut.isEnabled }, set: { checkInShortcut.setEnabled($0) }
+                    ))
+                    Spacer()
+                    ShortcutRecorder(shortcut: checkInShortcut)
+                }
+                if let error = checkInShortcut.errorMessage {
+                    Text(error).font(.caption).foregroundStyle(.red)
+                }
+                Text("Click a shortcut to change it. Press Escape to cancel.")
+                    .font(.caption).foregroundStyle(.secondary)
+
+                Divider()
+
+                Picker("Year Elapsed visualization", selection: $yearProgressVisualization) {
+                    ForEach(YearProgressVisualization.allCases) { option in
+                        Text(option.title).tag(option.rawValue)
+                    }
+                }
+
+                Divider()
+
+                Toggle(
+                    "Open Digital Wall at login",
+                    isOn: Binding(
+                        get: { launchAtLogin.isRequested },
+                        set: { launchAtLogin.setEnabled($0) }
+                    )
+                )
+
+                Text("Starts quietly, restores your desktop panels, and stays out of the Dock.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                if launchAtLogin.requiresApproval {
+                    HStack {
+                        Text("macOS needs your approval before it can start automatically.")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                        Spacer()
+                        Button("Open Login Items") {
+                            SMAppService.openSystemSettingsLoginItems()
+                        }
+                    }
+                }
+
+                if let errorMessage = launchAtLogin.errorMessage {
+                    Text(errorMessage)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
             }
+            .padding(24)
         }
-        .padding(24)
-        .frame(width: 460)
+        .frame(width: 520)
     }
 }
 

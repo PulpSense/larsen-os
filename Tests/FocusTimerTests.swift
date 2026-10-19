@@ -69,6 +69,38 @@ enum FocusTimerTests {
         precondition(early.complete(at: start.addingTimeInterval(10)))
         precondition(early.kind == .break && early.pausedRemaining == 0)
         precondition(early.isIndicatorVisible(at: start.addingTimeInterval(100)))
+        for action in TimerCompletionAction.allCases {
+            var flow = FocusTimer()
+            flow.start(minutes: 10, completionAction: action, at: start)
+            precondition(flow.completionAction == action)
+            precondition(flow.takePendingCheckIn() == nil, "Running timers must not open a form")
+            flow.pause(at: start.addingTimeInterval(2))
+            flow = try JSONDecoder().decode(FocusTimer.self, from: JSONEncoder().encode(flow))
+            precondition(flow.completionAction == action, "Per-session choice must survive relaunch")
+            precondition(flow.complete(at: start.addingTimeInterval(5)))
+            let expected: TimerCompletionAction? = action == .alert ? nil : action
+            if action != .alert {
+                precondition(flow.isIndicatorVisible(at: start.addingTimeInterval(86_400)),
+                             "Pending check-ins must stay visible until the user clicks")
+            }
+            precondition(flow.takePendingCheckIn() == expected)
+            precondition(flow.takePendingCheckIn() == nil, "A completed timer must open the form once")
+            flow = try JSONDecoder().decode(FocusTimer.self, from: JSONEncoder().encode(flow))
+            precondition(flow.takePendingCheckIn() == nil, "Handled forms must not reopen after relaunch")
+            flow.start(minutes: 1, kind: .break, completionAction: action, at: start)
+            flow.update(at: finish)
+            precondition(flow.completionAction == .alert && flow.takePendingCheckIn() == nil,
+                         "Breaks must never open a form")
+            flow.start(minutes: 1, completionAction: action, at: start)
+            flow = try JSONDecoder().decode(FocusTimer.self, from: JSONEncoder().encode(flow))
+            flow.update(at: finish)
+            precondition(flow.takePendingCheckIn() == expected, "Expired timers restored after sleep must keep their choice")
+            flow.reset()
+            precondition(flow.takePendingCheckIn() == nil)
+        }
+        precondition(legacy.completionAction == .alert && !legacy.hasPendingCheckIn,
+                     "Existing timers retain their original alert-only behavior")
+        print("PASS: completion choices, per-session persistence, single form transition, sleep, cancellation, break and legacy behavior")
         let examples: [(String, Int)] = [
             ("", 60), ("60 minute", 60), ("10 minutes", 10), ("fifteen minutes", 15),
             ("15m", 15), ("1h 30m", 90), ("1 hour and thirty minutes", 90),

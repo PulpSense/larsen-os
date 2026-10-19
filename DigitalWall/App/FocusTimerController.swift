@@ -18,10 +18,18 @@ final class FocusTimerController: NSObject, ObservableObject {
     private var ticker: Timer?
     private let glow = TimerCompletionGlow()
     private let storageKey = "focusTimerSession.v1"
-    private var checkIn: (() -> Void)?
+    private var checkIn: ((Bool?) -> Void)?
     private var observesExternalClicks = true
 
-    func configure(checkIn: @escaping () -> Void) { self.checkIn = checkIn }
+    func configure(checkIn: @escaping (Bool?) -> Void) {
+        self.checkIn = checkIn
+    }
+
+    private func openPendingCheckIn() {
+        guard let checkIn, let action = session.takePendingCheckIn() else { return }
+        reset()
+        checkIn(action == .formAndVisionBoard)
+    }
 
     func install(observeExternalClicks: Bool = true) {
         guard ticker == nil else { return }
@@ -144,13 +152,14 @@ final class FocusTimerController: NSObject, ObservableObject {
         return String(format: "%02d:%02d", seconds / 60, seconds % 60)
     }
 
-    func start(minutes: Int, kind: FocusTimer.Kind = .timer) {
+    func start(minutes: Int, kind: FocusTimer.Kind = .timer, completionAction: TimerCompletionAction? = nil) {
         glow.dismiss()
-        session.start(minutes: minutes, kind: kind, at: Date())
+        session.start(minutes: minutes, kind: kind, completionAction: completionAction ?? CheckInFlowPreferences.timerAction, at: Date())
         save()
         refresh()
         popover.performClose(nil)
         dismissLauncher()
+        if UserDefaults.standard.bool(forKey: "focusTimerDetached") { detach() }
     }
 
     func pauseOrResume() {
@@ -173,7 +182,7 @@ final class FocusTimerController: NSObject, ObservableObject {
     func reset() {
         glow.dismiss()
         session.reset()
-        attach()
+        attach(rememberPreference: false)
         save()
         refresh()
     }
@@ -181,14 +190,14 @@ final class FocusTimerController: NSObject, ObservableObject {
     func finishHour() {
         popover.performClose(nil)
         reset()
-        checkIn?()
+        checkIn?(nil)
     }
 
     func previewAlert() { glow.present() }
 
     private func presentCompletion(playSound: Bool = true) {
         let isBreak = session.kind == .break
-        if isBreak && playSound { NSSound(named: "Glass")?.play() }
+        if playSound { NSSound(named: "Glass")?.play() }
         glow.present(persistent: isBreak, observeExternalClicks: observesExternalClicks, onDismiss: { [weak self] in self?.reset() })
     }
 
@@ -196,12 +205,16 @@ final class FocusTimerController: NSObject, ObservableObject {
 
     func show() {
         refresh()
+        if session.hasPendingCheckIn {
+            openPendingCheckIn()
+            return
+        }
         if !session.isIndicatorVisible(at: now) { presentLauncher(); return }
         if session.phase == .running || session.phase == .paused {
             showSessionMenu()
             return
         }
-        if detachedPanel != nil { attach() }
+        if detachedPanel != nil { attach(rememberPreference: false) }
         guard let button = statusItem?.button, !popover.isShown else { return }
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
         popover.contentViewController?.view.window?.makeKey()
@@ -256,7 +269,7 @@ final class FocusTimerController: NSObject, ObservableObject {
         popover.performClose(nil)
         let screen = NSScreen.screens.first { NSMouseInRect(NSEvent.mouseLocation, $0.frame, false) } ?? NSScreen.main
         let visible = screen?.visibleFrame ?? NSRect(x: 0, y: 0, width: 800, height: 600)
-        let rect = NSRect(x: visible.maxX - 240, y: visible.maxY - 56, width: 220, height: 28)
+        let rect = NSRect(x: visible.maxX - 240, y: visible.maxY - 64, width: 220, height: 36)
         let panel = NSPanel(contentRect: rect, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         panel.title = "Focus timer"
         panel.backgroundColor = .clear
@@ -282,7 +295,7 @@ final class FocusTimerController: NSObject, ObservableObject {
         UserDefaults.standard.set(true, forKey: "focusTimerDetached")
     }
 
-    func attach() {
+    func attach(rememberPreference: Bool = true) {
         if statusItem == nil { createStatusItem() }
         statusItem?.length = 72
         statusItem?.isVisible = true
@@ -292,7 +305,7 @@ final class FocusTimerController: NSObject, ObservableObject {
         }
         detachedPanel = nil
         renderIcon()
-        UserDefaults.standard.set(false, forKey: "focusTimerDetached")
+        if rememberPreference { UserDefaults.standard.set(false, forKey: "focusTimerDetached") }
     }
 
     func refresh(at date: Date = Date()) {
@@ -301,9 +314,9 @@ final class FocusTimerController: NSObject, ObservableObject {
             save()
             presentCompletion()
         }
-        if session.phase == .completed, !session.isIndicatorVisible(at: now) {
+        if session.phase == .completed, !session.hasPendingCheckIn, !session.isIndicatorVisible(at: now) {
             session.reset()
-            attach()
+            attach(rememberPreference: false)
             save()
             popover.performClose(nil)
         }
@@ -317,6 +330,22 @@ final class FocusTimerController: NSObject, ObservableObject {
     }
 
     private func renderIcon() {
+        let shouldPulse = session.hasPendingCheckIn && detachedPanel == nil
+            && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        if let button = statusItem?.button {
+            button.wantsLayer = true
+            if shouldPulse, button.layer?.animation(forKey: "awaitingCheckIn") == nil {
+                let pulse = CABasicAnimation(keyPath: "opacity")
+                pulse.fromValue = 1
+                pulse.toValue = 0.45
+                pulse.duration = 0.9
+                pulse.autoreverses = true
+                pulse.repeatCount = .infinity
+                button.layer?.add(pulse, forKey: "awaitingCheckIn")
+            } else if !shouldPulse {
+                button.layer?.removeAnimation(forKey: "awaitingCheckIn")
+            }
+        }
         guard detachedPanel == nil else { return }
         guard session.isIndicatorVisible(at: now) else {
             statusItem?.button?.image = nil
@@ -356,7 +385,7 @@ final class FocusTimerController: NSObject, ObservableObject {
         case .idle: description = "Start a timer (\(GlobalShortcut.timer.combination.title))"
         case .running: description = "Focus timer: \(remainingText) remaining"
         case .paused: description = "Focus timer paused: \(remainingText) remaining"
-        case .completed: description = "Timer complete"
+        case .completed: description = session.hasPendingCheckIn ? "Timer complete · Click to open hourly form" : "Timer complete"
         }
         statusItem?.button?.toolTip = description
         statusItem?.button?.setAccessibilityLabel(description)
@@ -370,26 +399,24 @@ private final class TimerLauncherPanel: NSPanel {
     override func cancelOperation(_ sender: Any?) { dismissAction?() }
 }
 
-/// One keyboard-focused command, shared by the field and the panel's key monitor.
+/// Keeps a user's mode override while the duration is edited.
 @MainActor
-private final class TimerLauncherInput: ObservableObject {
+final class TimerLauncherInput: ObservableObject {
     @Published var text = "" {
-        didSet {
-            showsError = false
-            if TimerDuration.kind(from: text) == .break { kind = .break }
-            else if TimerDuration.kind(from: oldValue) == .break { kind = .timer }
-        }
+        didSet { showsError = false }
     }
-    @Published var kind: FocusTimer.Kind = .timer
+    @Published private var modeOverride: FocusTimer.Kind?
+    var kind: FocusTimer.Kind {
+        if let modeOverride { return modeOverride }
+        if TimerDuration.kind(from: text) == .break { return .break }
+        if text.range(of: #"\b(timer|focus)\b"#, options: [.regularExpression, .caseInsensitive]) != nil { return .timer }
+        return (minutes ?? 60) < 30 ? .break : .timer
+    }
     @Published var showsError = false
     var minutes: Int? { TimerDuration.minutes(from: text) }
 
-    func toggleKind() { kind = kind == .timer ? .break : .timer }
-    func setDuration(_ minutes: Int) {
-        let selectedKind = kind
-        text = "\(minutes) minutes"
-        kind = selectedKind
-    }
+    func toggleKind() { modeOverride = kind == .timer ? .break : .timer }
+    func setDuration(_ minutes: Int) { text = "\(minutes) minutes" }
 }
 
 /// A native field becomes first responder as soon as the nonactivating panel opens.
@@ -468,7 +495,7 @@ private struct TimerDurationLauncher: View {
                         Text(input.showsError ? "Enter 1–180 minutes" : actionTitle)
                             .font(.system(size: 13, weight: .medium))
                             .foregroundStyle(input.showsError ? Color.red : Color.primary)
-                        Text(input.kind == .break ? "One chime · stays until you click" : "Green halo · clears automatically")
+                        Text(input.kind == .break ? "One chime · stays until you click" : CheckInFlowPreferences.timerAction.title)
                             .font(.system(size: 11)).foregroundStyle(.secondary)
                     }
                     Spacer()
@@ -549,10 +576,12 @@ private struct FocusTimerPopover: View {
 private struct DetachedFocusTimer: View {
     @ObservedObject var controller: FocusTimerController
     @State private var hovering = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var pulse = false
 
     var body: some View {
         HStack(spacing: 6) {
-            if hovering {
+            if hovering && !controller.session.hasPendingCheckIn {
                 Button { controller.pauseOrResume() } label: {
                     Label(controller.session.phase == .paused ? "Resume" : "Pause",
                           systemImage: controller.session.phase == .paused ? "play.circle" : "pause.circle")
@@ -579,7 +608,7 @@ private struct DetachedFocusTimer: View {
                     .font(.system(size: 12, weight: .semibold, design: .monospaced))
                     .padding(.horizontal, 6).padding(.vertical, 2)
                     .background(.white.opacity(0.1), in: RoundedRectangle(cornerRadius: 10))
-                Text(controller.session.phase == .completed ? "Time’s up" : (controller.session.kind == .break ? "Break" : "Timer"))
+                Text(controller.session.hasPendingCheckIn ? "Click to continue" : (controller.session.phase == .completed ? "Time’s up" : (controller.session.kind == .break ? "Break" : "Timer")))
                     .font(.system(size: 12, weight: .medium))
                 Spacer(minLength: 0)
             }
@@ -587,7 +616,7 @@ private struct DetachedFocusTimer: View {
         }
         .buttonStyle(DetachedTimerButtonStyle())
         .padding(.horizontal, 8)
-        .frame(width: 220, height: 28)
+        .frame(width: 220, height: 36)
         .background {
             GeometryReader { proxy in
                 Color.green.opacity(0.28)
@@ -598,6 +627,16 @@ private struct DetachedFocusTimer: View {
         .clipShape(Capsule())
         .overlay { Capsule().strokeBorder(.white.opacity(0.22), lineWidth: 1) }
         .preferredColorScheme(.dark)
+        .opacity(pulse ? 0.55 : 1)
+        .onChange(of: controller.session.hasPendingCheckIn, initial: true) { _, pending in
+            pulse = false
+            if pending && !reduceMotion {
+                withAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true)) { pulse = true }
+            }
+        }
+        .onTapGesture {
+            if controller.session.hasPendingCheckIn { controller.show() }
+        }
         .onHover { hovering = $0 }
     }
 }

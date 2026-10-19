@@ -140,16 +140,9 @@ struct HourCheckInsView: View {
         form = HourCheckInForm()
         submissionID = UUID()
         savedMessage = submittedForm.isDeepWork ? "Check-in saved · 1 deep work hour logged" : "Check-in saved"
-        let hours = store.deepWorkHours(on: submittedForm.date)
-        if submittedForm.isDeepWork && Calendar.current.isDateInToday(submittedForm.date) && hours >= DeepWork.dailyGoalHours {
-            DeepWorkCelebrationPresenter.shared.present(
-                hours: hours,
-                streak: ConsistencyStreak.current(
-                    completedDays: store.completedDays, through: date, calendar: TrackerCalendar.calendar
-                ),
-                hideApplicationOnDismiss: false
-            )
-        }
+        VisionBoardPresenter.shared.presentAfterCheckIn(
+            store: store, date: submittedForm.date, isDeepWork: submittedForm.isDeepWork
+        )
     }
 }
 

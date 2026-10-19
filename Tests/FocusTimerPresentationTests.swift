@@ -5,9 +5,33 @@ enum FocusTimerPresentationTests {
     static func runChecks() async {
         let app = NSApplication.shared
         app.setActivationPolicy(.accessory)
+        let originalAction = UserDefaults.standard.object(forKey: CheckInFlowPreferences.timerActionKey)
+        UserDefaults.standard.set(TimerCompletionAction.alert.rawValue, forKey: CheckInFlowPreferences.timerActionKey)
+        defer {
+            if let originalAction { UserDefaults.standard.set(originalAction, forKey: CheckInFlowPreferences.timerActionKey) }
+            else { UserDefaults.standard.removeObject(forKey: CheckInFlowPreferences.timerActionKey) }
+        }
         let controller = FocusTimerController.shared
         // Drive local events explicitly; clicks in unrelated apps must not interrupt this test.
         controller.install(observeExternalClicks: false)
+        controller.attach()
+        controller.reset()
+        let input = TimerLauncherInput()
+        precondition(input.kind == .timer)
+        input.text = "29m"
+        precondition(input.kind == .break)
+        input.text = "30m"
+        precondition(input.kind == .timer)
+        input.setDuration(10)
+        precondition(input.kind == .break)
+        input.toggleKind()
+        input.setDuration(15)
+        precondition(input.kind == .timer, "Explicit mode override must survive duration edits")
+        let explicitTimer = TimerLauncherInput()
+        explicitTimer.text = "10 minute timer"
+        precondition(explicitTimer.kind == .timer)
+        explicitTimer.text = "45 minute break"
+        precondition(explicitTimer.kind == .break)
         controller.reset()
         controller.startDefaultOrShow()
         let neighbor = NSStatusBar.system.statusItem(withLength: 24)
@@ -26,7 +50,7 @@ enum FocusTimerPresentationTests {
         // Include a countdown tick to catch hidden status items resurfacing during image updates.
         try? await Task.sleep(for: .milliseconds(1_100))
         let panel = app.windows.first { $0.title == "Focus timer" && $0.isVisible }!
-        precondition(panel.frame.size == NSSize(width: 220, height: 28))
+        precondition(panel.frame.size == NSSize(width: 220, height: 36))
         precondition(panel.level == .screenSaver)
         precondition(panel.collectionBehavior.contains(.canJoinAllSpaces))
         precondition(panel.collectionBehavior.contains(.fullScreenAuxiliary))
@@ -92,6 +116,19 @@ enum FocusTimerPresentationTests {
         controller.complete()
         precondition(controller.session.phase == .completed && controller.session.completedAt != nil)
         precondition(app.windows.contains { $0.title == "Timer completed" && $0.isVisible })
+        controller.detach()
+        controller.reset()
+        precondition(UserDefaults.standard.bool(forKey: "focusTimerDetached"), "Cancel must preserve detached preference")
+        controller.start(minutes: 1, completionAction: .alert)
+        precondition(app.windows.contains { $0.title == "Focus timer" && $0.isVisible }, "New timer must restore detached mode")
+        controller.refresh(at: controller.session.deadline!.addingTimeInterval(31))
+        precondition(UserDefaults.standard.bool(forKey: "focusTimerDetached"), "Automatic cleanup must preserve detached preference")
+        controller.start(minutes: 1, completionAction: .alert)
+        precondition(app.windows.contains { $0.title == "Focus timer" && $0.isVisible })
+        controller.attach()
+        controller.reset()
+        controller.start(minutes: 1, completionAction: .alert)
+        precondition(!app.windows.contains { $0.title == "Focus timer" && $0.isVisible }, "Explicit attach must become the preference")
         controller.reset()
         controller.previewAlert()
         let alerts = app.windows.filter { $0.title == "Timer completed" && $0.isVisible }
@@ -117,6 +154,55 @@ enum FocusTimerPresentationTests {
         try? await Task.sleep(for: .milliseconds(300))
         precondition(controller.session.phase == .idle, "Clicking anywhere must dismiss a completed break.")
         precondition(breakAlerts.allSatisfy { !$0.isVisible })
+        var transitions: [Bool?] = []
+        controller.configure { transitions.append($0) }
+        for action in TimerCompletionAction.allCases {
+            controller.reset()
+            transitions.removeAll()
+            controller.start(minutes: 1, completionAction: action)
+            let deadline = controller.session.deadline!
+            controller.refresh(at: deadline)
+            precondition(transitions.isEmpty, "Expiration must never open a form")
+            if action != .alert {
+                let completionAlerts = app.windows.filter { $0.title == "Timer completed" && $0.isVisible }
+                precondition(completionAlerts.count == NSScreen.screens.count,
+                             "Check-in timers must retain the green completion glow on every display")
+                precondition(completionAlerts.allSatisfy { $0.ignoresMouseEvents && !$0.canBecomeKey },
+                             "Completion glow must leave focus and clicks with the current app")
+                controller.refresh(at: deadline.addingTimeInterval(3_600))
+                precondition(controller.session.hasPendingCheckIn && controller.session.isIndicatorVisible(at: deadline.addingTimeInterval(3_600)),
+                             "A completed timer must stay available until clicked")
+                controller.configure { transitions.append($0) }
+                precondition(transitions.isEmpty, "Configuring after launch must not open a pending form")
+                controller.show()
+                precondition(transitions.count == 1 && transitions[0] == (action == .formAndVisionBoard))
+                precondition(controller.session.phase == .idle, "Clicking acknowledges the timer")
+                controller.refresh()
+                precondition(transitions.count == 1, "Acknowledged timer must not repeat the transition")
+            }
+        }
+        controller.reset()
+        transitions.removeAll()
+        UserDefaults.standard.set(TimerCompletionAction.form.rawValue, forKey: CheckInFlowPreferences.timerActionKey)
+        controller.start(minutes: 1)
+        UserDefaults.standard.set(TimerCompletionAction.formAndVisionBoard.rawValue, forKey: CheckInFlowPreferences.timerActionKey)
+        controller.pauseOrResume()
+        controller.complete()
+        precondition(transitions.isEmpty, "Manual completion must also wait for a click")
+        controller.detach()
+        controller.show()
+        precondition(transitions.count == 1 && transitions[0] == false,
+                     "Clicking the detached timer must preserve its session choice")
+        controller.reset()
+        transitions.removeAll()
+        controller.start(minutes: 1, kind: .break, completionAction: .formAndVisionBoard)
+        controller.complete()
+        precondition(transitions.isEmpty, "Break completion must never open a form")
+        controller.reset()
+        controller.finishHour()
+        precondition(transitions.count == 1 && transitions[0] == nil, "Manual check-ins use their own setting")
+        controller.reset()
+        print("PASS: no intrusive form on completion or configure, click to continue, persistent pending indicator, detached timer, and per-session choices")
         print("Focus timer presentation tests passed: default start, pause, detach, window level, attach, resume, cancel, non-interactive completion alert and three-second dismissal")
     }
 }
