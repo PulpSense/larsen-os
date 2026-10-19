@@ -2,6 +2,10 @@ import AppKit
 import Carbon
 import SwiftUI
 
+private enum DetachedTimerLayout {
+    static let size = NSSize(width: 260, height: 36)
+}
+
 @MainActor
 final class FocusTimerController: NSObject, ObservableObject {
     static let shared = FocusTimerController()
@@ -269,7 +273,9 @@ final class FocusTimerController: NSObject, ObservableObject {
         popover.performClose(nil)
         let screen = NSScreen.screens.first { NSMouseInRect(NSEvent.mouseLocation, $0.frame, false) } ?? NSScreen.main
         let visible = screen?.visibleFrame ?? NSRect(x: 0, y: 0, width: 800, height: 600)
-        let rect = NSRect(x: visible.maxX - 240, y: visible.maxY - 64, width: 220, height: 36)
+        let size = DetachedTimerLayout.size
+        let rect = NSRect(x: visible.maxX - size.width - 20, y: visible.maxY - 64,
+                          width: size.width, height: size.height)
         let panel = NSPanel(contentRect: rect, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         panel.title = "Focus timer"
         panel.backgroundColor = .clear
@@ -616,7 +622,7 @@ private struct DetachedFocusTimer: View {
         }
         .buttonStyle(DetachedTimerButtonStyle())
         .padding(.horizontal, 8)
-        .frame(width: 220, height: 36)
+        .frame(width: DetachedTimerLayout.size.width, height: DetachedTimerLayout.size.height)
         .background {
             GeometryReader { proxy in
                 Color.green.opacity(0.28)
@@ -645,6 +651,7 @@ private struct DetachedTimerButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 11, weight: .medium))
+            .fixedSize(horizontal: true, vertical: false)
             .padding(.horizontal, 5)
             .padding(.vertical, 3)
             .background(.white.opacity(configuration.isPressed ? 0.2 : 0.1),
