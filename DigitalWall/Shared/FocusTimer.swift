@@ -1,5 +1,39 @@
 import Foundation
 
+enum TimerCompletionAction: String, Codable, CaseIterable {
+    case alert
+    case form
+    case formAndVisionBoard
+
+    var title: String {
+        switch self {
+        case .alert: "Show completion alert"
+        case .form: "On click: hourly form"
+        case .formAndVisionBoard: "On click: hourly form, then vision board"
+        }
+    }
+
+    var shortTitle: String {
+        switch self {
+        case .alert: "Alert only"
+        case .form: "Hourly form"
+        case .formAndVisionBoard: "Form + vision board"
+        }
+    }
+}
+
+enum CheckInFlowPreferences {
+    static let timerActionKey = "timerCompletionAction"
+    static let manualVisionBoardKey = "manualCheckInShowsVisionBoard"
+    static var timerAction: TimerCompletionAction {
+        UserDefaults.standard.string(forKey: timerActionKey).flatMap(TimerCompletionAction.init(rawValue:))
+            ?? .formAndVisionBoard
+    }
+    static var manualVisionBoard: Bool {
+        UserDefaults.standard.object(forKey: manualVisionBoardKey) as? Bool ?? true
+    }
+}
+
 /// A deadline keeps elapsed time correct across sleep and relaunch. Pausing freezes the remainder.
 struct FocusTimer: Codable {
     enum Phase: String, Codable { case idle, running, paused, completed }
@@ -7,6 +41,20 @@ struct FocusTimer: Codable {
 
     // Optional storage preserves sessions saved before timer kinds existed.
     private var storedKind: Kind?
+    private var storedCompletionAction: TimerCompletionAction?
+    private var completionActionHandled: Bool?
+    var completionAction: TimerCompletionAction { storedCompletionAction ?? .alert }
+    var hasPendingCheckIn: Bool {
+        phase == .completed && kind == .timer && completionAction != .alert && completionActionHandled != true
+    }
+
+    /// Persist the acknowledgement before opening UI, so relaunch cannot reopen a handled form.
+    mutating func takePendingCheckIn() -> TimerCompletionAction? {
+        guard hasPendingCheckIn else { return nil }
+        completionActionHandled = true
+        return completionAction
+    }
+
     var kind: Kind { storedKind ?? .timer }
 
     private(set) var phase: Phase = .idle
@@ -29,8 +77,10 @@ struct FocusTimer: Codable {
         return min(1, max(0, 1 - remaining(at: now) / duration))
     }
 
-    mutating func start(minutes: Int, kind: Kind = .timer, at now: Date) {
+    mutating func start(minutes: Int, kind: Kind = .timer, completionAction: TimerCompletionAction = .alert, at now: Date) {
         storedKind = kind
+        storedCompletionAction = kind == .break ? .alert : completionAction
+        completionActionHandled = false
         duration = TimeInterval(min(180, max(1, minutes)) * 60)
         deadline = now.addingTimeInterval(duration)
         completedAt = nil
@@ -74,7 +124,7 @@ struct FocusTimer: Codable {
         case .idle: return false
         case .running, .paused: return true
         case .completed:
-            if kind == .break { return true }
+            if kind == .break || hasPendingCheckIn { return true }
             guard let completedAt else { return false }
             return now < completedAt.addingTimeInterval(30)
         }
