@@ -1,5 +1,7 @@
 import AppKit
 import SwiftUI
+import UniformTypeIdentifiers
+import ImageIO
 
 @MainActor
 final class VisionBoardDesktopPanelController {
@@ -90,12 +92,14 @@ final class VisionBoardDesktopPanelController {
 
 }
 
-private struct VisionBoardDesktopPanelContent: View {
+struct VisionBoardDesktopPanelContent: View {
     @ObservedObject var store: WallStore
     let boardID: UUID
     let openBoard: () -> Void
     let hide: () -> Void
     @State private var controlsVisible = false
+    @State private var dropTargeted = false
+    @State private var dropError: String?
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
@@ -116,7 +120,118 @@ private struct VisionBoardDesktopPanelContent: View {
             }
             .padding(12)
         }
+        .overlay {
+            if dropTargeted {
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(.blue.opacity(0.16))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 16)
+                            .strokeBorder(.blue, lineWidth: 3)
+                    }
+                    .overlay {
+                        Label("Add images to this board", systemImage: "photo.badge.plus")
+                            .padding(12)
+                            .background(.regularMaterial, in: Capsule())
+                    }
+                    .allowsHitTesting(false)
+            }
+        }
+        .onDrop(of: [UTType.fileURL, UTType.image, UTType.url], isTargeted: $dropTargeted, perform: importDrop)
+        .alert("Couldn’t add image", isPresented: Binding(
+            get: { dropError != nil }, set: { if !$0 { dropError = nil } }
+        )) {
+            Button("OK") { dropError = nil }
+        } message: {
+            Text(dropError ?? "")
+        }
         .onHover { controlsVisible = $0 }
+    }
+
+    func importDrop(_ providers: [NSItemProvider]) -> Bool {
+        let supported = providers.filter {
+            $0.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier)
+                || $0.hasItemConformingToTypeIdentifier(UTType.image.identifier)
+                || $0.hasItemConformingToTypeIdentifier(UTType.url.identifier)
+        }
+        guard !supported.isEmpty else { return false }
+        Task { @MainActor in
+            store.lastError = nil
+            // Import sequentially so multi-image drops retain their supplied order.
+            for provider in supported {
+                do {
+                    if provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
+                        let url = try await droppedURL(from: provider, type: .fileURL)
+                        store.importImages(from: [url], to: boardID)
+                    } else if provider.hasItemConformingToTypeIdentifier(UTType.image.identifier) {
+                        // Providers own temporary file representations only during their callback.
+                        let url: URL = try await withCheckedThrowingContinuation { continuation in
+                            provider.loadFileRepresentation(forTypeIdentifier: UTType.image.identifier) { url, error in
+                                do {
+                                    if let error { throw error }
+                                    guard let url else { throw CocoaError(.fileReadCorruptFile) }
+                                    let copy = FileManager.default.temporaryDirectory
+                                        .appendingPathComponent(UUID().uuidString)
+                                        .appendingPathExtension(url.pathExtension.isEmpty ? "png" : url.pathExtension)
+                                    try FileManager.default.copyItem(at: url, to: copy)
+                                    continuation.resume(returning: copy)
+                                } catch { continuation.resume(throwing: error) }
+                            }
+                        }
+                        defer { try? FileManager.default.removeItem(at: url) }
+                        store.importImages(from: [url], to: boardID)
+                    } else {
+                        let remoteURL = try await droppedURL(from: provider, type: .url)
+                        let url = try await downloadDroppedImage(from: remoteURL)
+                        defer { try? FileManager.default.removeItem(at: url) }
+                        store.importImages(from: [url], to: boardID)
+                    }
+                    if let error = store.lastError { dropError = error }
+                } catch {
+                    store.lastError = error.localizedDescription
+                    dropError = error.localizedDescription
+                }
+            }
+        }
+        return true
+    }
+
+    private func droppedURL(from provider: NSItemProvider, type: UTType) async throws -> URL {
+        try await withCheckedThrowingContinuation { continuation in
+            provider.loadItem(forTypeIdentifier: type.identifier) { item, error in
+                if let error { continuation.resume(throwing: error) }
+                else if let url = item as? URL { continuation.resume(returning: url) }
+                else if let string = item as? String, let url = URL(string: string) {
+                    continuation.resume(returning: url)
+                } else if let data = item as? Data,
+                          let url = URL(dataRepresentation: data, relativeTo: nil) {
+                    continuation.resume(returning: url)
+                } else { continuation.resume(throwing: CocoaError(.fileReadCorruptFile)) }
+            }
+        }
+    }
+
+    private func downloadDroppedImage(from url: URL) async throws -> URL {
+        guard ["https", "http"].contains(url.scheme?.lowercased() ?? "") else {
+            throw ImageDropError.notAnImage
+        }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 30
+        let (download, response) = try await URLSession.shared.download(for: request)
+        defer { try? FileManager.default.removeItem(at: download) }
+        guard let response = response as? HTTPURLResponse,
+              (200..<300).contains(response.statusCode),
+              let image = NSImage(contentsOf: download), image.isValid else {
+            throw ImageDropError.notAnImage
+        }
+        // Use the decoded image type instead of trusting a URL suffix or server MIME type.
+        guard let source = CGImageSourceCreateWithURL(download as CFURL, nil),
+              let identifier = CGImageSourceGetType(source),
+              let type = UTType(identifier as String), type.conforms(to: .image),
+              let ext = type.preferredFilenameExtension else { throw ImageDropError.notAnImage }
+        let copy = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString).appendingPathExtension(ext)
+        try FileManager.default.moveItem(at: download, to: copy)
+        return copy
     }
 
     private var board: VisionBoard? { store.visionBoard(boardID) }
@@ -144,6 +259,8 @@ private struct VisionBoardDesktopPanelContent: View {
                         .font(.largeTitle)
                     Text(board?.name ?? "Vision board")
                         .font(.headline)
+                    Text("Drop images here to add them")
+                        .font(.callout)
                 }
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -204,4 +321,12 @@ private struct VisionBoardDesktopPanelContent: View {
         } ?? 1
     }
 
+}
+
+private enum ImageDropError: LocalizedError {
+    case notAnImage
+
+    var errorDescription: String? {
+        "This link didn’t return a readable image. Drag the image itself, or save it and drop the image file."
+    }
 }

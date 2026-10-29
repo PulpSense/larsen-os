@@ -29,6 +29,8 @@ final class HourCheckInPanelController {
             Task { @MainActor [weak self] in
                 if app.processIdentifier != ProcessInfo.processInfo.processIdentifier {
                     self?.lastExternalApplication = app
+                    // Let the user check another app without leaving dimming panels in the way.
+                    self?.dismiss(restoringFocus: false)
                 }
             }
         }
@@ -94,6 +96,13 @@ final class HourCheckInPanelController {
         panel.setFrame(frame, display: true)
         panel.autorecalculatesKeyViewLoop = false
         panel.dismissForm = { [weak self] in self?.dismiss() }
+        panel.didLoseFocus = { [weak self, weak panel, weak editor] in
+            editor?.rememberFocus()
+            DispatchQueue.main.async {
+                guard let self, let panel, self.panel === panel, !panel.isKeyWindow else { return }
+                self.dismiss(restoringFocus: false)
+            }
+        }
         panel.submitForm = { [weak editor] in editor?.submit() }
         panel.moveFocus = { [weak editor] backwards in editor?.moveFocus(backwards: backwards) }
         self.panel = panel
@@ -130,6 +139,7 @@ final class HourCheckInPanelController {
         let appToRestore = previousApplication
         let windowToRestore = previousKeyWindow
         let dismissedPresentation = presentationID
+        editor?.rememberFocus()
         // Closing releases the panel’s keyboard ownership; hiding alone is insufficient.
         panel.close()
         panel.contentViewController = nil
@@ -167,15 +177,22 @@ private final class CheckInBackdropPanel: NSPanel {
 
 private final class CheckInPanel: NSPanel {
     var dismissForm: (() -> Void)?
+    var didLoseFocus: (() -> Void)?
     var submitForm: (() -> Void)?
     var moveFocus: ((Bool) -> Void)?
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
 
+    override func resignKey() {
+        didLoseFocus?()
+        super.resignKey()
+    }
+
     override func sendEvent(_ event: NSEvent) {
         if event.type == .keyDown {
             if event.keyCode == 53 { dismissForm?(); return }
-            if event.keyCode == 48 {
+            if event.keyCode == 48,
+               event.modifierFlags.intersection([.command, .control, .option]).isEmpty {
                 moveFocus?(event.modifierFlags.contains(.shift))
                 return
             }
@@ -202,6 +219,8 @@ private final class CheckInEditorController: NSViewController, NSTextViewDelegat
     private let errorLabel = NSTextField(wrappingLabelWithString: "")
     private let submitButton = NSButton(title: "Submit", target: nil, action: nil)
     private var focusOrder: [NSView] = []
+    private weak var resumeControl: NSView?
+    private var resumeSelection: NSRange?
     private let dateLabel = NSTextField(labelWithString: "")
     private let progressLabel = NSTextField(labelWithString: "")
     private let progress = CheckInProgressView()
@@ -458,8 +477,25 @@ private final class CheckInEditorController: NSViewController, NSTextViewDelegat
         progress.hours = hours
         progressLabel.stringValue = hours >= 4 ? "\(hours) deep work hours today · Day won" :
             "\(hours) of 4 deep work hours today · \(4 - hours) to win the day"
-        view.window?.makeFirstResponder(category)
-        category.scrollToVisible(category.bounds)
+        let target = resumeControl.flatMap { control in
+            focusOrder.contains(where: { $0 === control }) ? control : nil
+        } ?? category
+        view.window?.makeFirstResponder(target)
+        if let text = target as? NSTextView, let selection = resumeSelection,
+           NSMaxRange(selection) <= (text.string as NSString).length {
+            text.setSelectedRange(selection)
+            text.scrollRangeToVisible(selection)
+        }
+        target.scrollToVisible(target.bounds)
+    }
+
+    func rememberFocus() {
+        guard let current = view.window?.firstResponder,
+              let control = focusOrder.first(where: {
+                  current === $0 || ($0 as? NSControl)?.currentEditor() === current
+              }) else { return }
+        resumeControl = control
+        resumeSelection = (control as? NSTextView)?.selectedRange()
     }
 
     func moveFocus(backwards: Bool) {
@@ -493,6 +529,8 @@ private final class CheckInEditorController: NSViewController, NSTextViewDelegat
     }
 
     @objc private func clearForm() {
+        resumeControl = nil
+        resumeSelection = nil
         submissionID = UUID()
         activity.string = ""
         distractions.string = ""

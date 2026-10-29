@@ -118,16 +118,21 @@ enum WallContentTests {
                 && DeepWorkCelebrationMilestone.forHours(12) == .keepBuilding,
             "Every post-goal hour must map to the intended escalating celebration."
         )
-        let bonusConfiguration = DeepWorkCelebrationMilestone.bonusHour.configuration(hours: 5)
-        let continuingParticleCounts = (9...16).map {
-            DeepWorkCelebrationMilestone.keepBuilding.configuration(hours: $0).particleCount
+        let planetaryStages = (4...40).map { PlanetaryCelebrationIntensity(hours: $0) }
+        for (previous, next) in zip(planetaryStages, planetaryStages.dropFirst()) {
+            precondition(next.moons >= previous.moons && next.rings >= previous.rings
+                && next.stars >= previous.stars && next.meteors >= previous.meteors
+                && next.orbitSpeed >= previous.orbitSpeed && next.warp >= previous.warp,
+                "Planetary celebrations must never become quieter at a new hour or level boundary")
         }
+        precondition(planetaryStages.last!.stars <= 360 && planetaryStages.last!.moons <= 8
+            && planetaryStages.last!.meteors <= 10, "Cosmic effects must stay bounded for rendering")
+
+        let bonusConfiguration = DeepWorkCelebrationMilestone.bonusHour.configuration(hours: 5)
         precondition(
-            bonusConfiguration.title == "BONUS HOUR"
-                && bonusConfiguration.detail.contains("beyond four")
-                && zip(continuingParticleCounts, continuingParticleCounts.dropFirst())
-                    .allSatisfy { $0.0 != $0.1 },
-            "Celebration copy and bounded 9H+ intensity must stay centralized and keep evolving."
+            bonusConfiguration.title == "Bonus hour"
+                && bonusConfiguration.detail.contains("beyond your daily goal"),
+            "Celebration copy must stay centralized."
         )
 
         let legacyData = Data(#"{"completedDays":["2026-08-31"],"phrasesMarkdown":"Keep going."}"#.utf8)
