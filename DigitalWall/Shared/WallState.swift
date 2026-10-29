@@ -351,40 +351,33 @@ enum DeepWorkCelebrationMilestone: Equatable {
         switch self {
         case .dayWon:
             return DeepWorkCelebrationConfiguration(
-                title: "DAY WON",
-                detail: "4 hours of deep work",
-                particleCount: 220
+                title: "Day won",
+                detail: "Your daily goal is complete. This world is yours."
             )
         case .bonusHour:
             return DeepWorkCelebrationConfiguration(
-                title: "BONUS HOUR",
-                detail: "Every hour beyond four makes you stronger.",
-                particleCount: 12
+                title: "Bonus hour",
+                detail: "One hour beyond your daily goal. A wider orbit."
             )
         case .momentum:
             return DeepWorkCelebrationConfiguration(
-                title: "MOMENTUM",
-                detail: "Extra hours compound.",
-                particleCount: 20
+                title: "Momentum",
+                detail: "Your momentum is becoming its own gravity."
             )
         case .unstoppable:
             return DeepWorkCelebrationConfiguration(
-                title: "UNSTOPPABLE",
-                detail: "Discipline today. A brighter tomorrow.",
-                particleCount: 26
+                title: "Unstoppable",
+                detail: "Nothing is slowing you down."
             )
         case .doubleGoal:
             return DeepWorkCelebrationConfiguration(
-                title: "2× GOAL",
-                detail: "Twice the target.",
-                particleCount: 42
+                title: "Double goal",
+                detail: "Two goals. One extraordinary day."
             )
         case .keepBuilding:
-            let cycle = max(0, hours - 9) % 7
             return DeepWorkCelebrationConfiguration(
-                title: "KEEP BUILDING",
-                detail: "No limits. More focus.",
-                particleCount: 28 + cycle * 4
+                title: "Keep building",
+                detail: "One more hour. A whole new frontier."
             )
         }
     }
@@ -393,7 +386,29 @@ enum DeepWorkCelebrationMilestone: Equatable {
 struct DeepWorkCelebrationConfiguration: Equatable {
     let title: String
     let detail: String
-    let particleCount: Int
+}
+
+/// Earned hours increase the spectacle without resetting it at a level boundary.
+struct PlanetaryCelebrationIntensity {
+    let hours: Int
+    var moons: Int { min(8, max(1, hours - 3)) }
+    var rings: Int { min(5, max(0, hours - 4)) }
+    var stars: Int { min(360, 60 + min(24, max(0, hours - 4)) * 24) }
+    var meteors: Int { min(10, max(0, hours - 6)) }
+    var orbitSpeed: Double { min(1.8, 0.26 + Double(max(0, hours - 4)) * 0.11) }
+    var warp: Double { min(3, Double(max(0, hours - 8)) * 0.3) }
+    var chapter: String {
+        switch hours {
+        case ...4: "A new world"
+        case 5: "Rings unlocked"
+        case 6: "Orbital momentum"
+        case 7: "Meteor shower"
+        case 8: "Binary worlds"
+        case 9...11: "Entering hyperspace"
+        case 12...15: "Cosmic overdrive"
+        default: "Beyond the known universe"
+        }
+    }
 }
 
 enum ConsistencyStreak {

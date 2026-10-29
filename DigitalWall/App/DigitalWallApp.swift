@@ -107,6 +107,16 @@ struct DigitalWallApp: App {
                     FocusTimerController.shared.previewAlert()
                 }
 
+                Menu("Preview hourly milestones") {
+                    ForEach(4...15, id: \.self) { hours in
+                        Button("\(hours) hours · \(DeepWorkCelebrationMilestone.forHours(hours)!.configuration(hours: hours).title)") {
+                            DeepWorkCelebrationPresenter.shared.present(
+                                hours: hours, streak: 3, hideApplicationOnDismiss: false
+                            )
+                        }
+                    }
+                }
+
                 Button("Finish Hour") {
                     HourCheckInPanelController.shared.present(store: store)
                 }
