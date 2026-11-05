@@ -22,6 +22,11 @@ final class FocusTimerController: NSObject, ObservableObject {
     private var ticker: Timer?
     private let glow = TimerCompletionGlow()
     private let storageKey = "focusTimerSession.v1"
+    private let breakSuggestionKey = "focusTimerSuggestBreak.v1"
+    var suggestsBreak: Bool {
+        UserDefaults.standard.bool(forKey: breakSuggestionKey)
+            && session.phase != .running && session.phase != .paused
+    }
     private var checkIn: ((Bool?) -> Void)?
     private var observesExternalClicks = true
 
@@ -89,10 +94,11 @@ final class FocusTimerController: NSObject, ObservableObject {
         launcherPreviousKeyWindow = NSApp.keyWindow
         let screen = NSScreen.screens.first { NSMouseInRect(NSEvent.mouseLocation, $0.frame, false) } ?? NSScreen.main
         guard let screen else { return }
+        let suggestsBreak = self.suggestsBreak
         let width = min(500, screen.visibleFrame.width - 32)
         let frame = NSRect(x: screen.visibleFrame.midX - width / 2,
                            y: screen.visibleFrame.midY + screen.visibleFrame.height * 0.18,
-                           width: width, height: 164)
+                           width: width, height: suggestsBreak ? 222 : 164)
         let panel = TimerLauncherPanel(contentRect: frame, styleMask: [.borderless, .nonactivatingPanel],
                                        backing: .buffered, defer: false)
         panel.title = "Start timer"
@@ -104,7 +110,7 @@ final class FocusTimerController: NSObject, ObservableObject {
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
         panel.isReleasedWhenClosed = false
         panel.dismissAction = { [weak self] in self?.dismissLauncher() }
-        let input = TimerLauncherInput()
+        let input = TimerLauncherInput(suggestsBreak: suggestsBreak)
         panel.contentView = NSHostingView(rootView: TimerDurationLauncher(controller: self, input: input))
         launcherPanel = panel
         panel.makeKeyAndOrderFront(nil)
@@ -158,6 +164,7 @@ final class FocusTimerController: NSObject, ObservableObject {
 
     func start(minutes: Int, kind: FocusTimer.Kind = .timer, completionAction: TimerCompletionAction? = nil) {
         glow.dismiss()
+        UserDefaults.standard.set(false, forKey: breakSuggestionKey)
         session.start(minutes: minutes, kind: kind, completionAction: completionAction ?? CheckInFlowPreferences.timerAction, at: Date())
         save()
         refresh()
@@ -201,8 +208,12 @@ final class FocusTimerController: NSObject, ObservableObject {
 
     private func presentCompletion(playSound: Bool = true) {
         let isBreak = session.kind == .break
+        if !isBreak && session.duration >= 3_600 {
+            UserDefaults.standard.set(true, forKey: breakSuggestionKey)
+        }
         if playSound { NSSound(named: "Glass")?.play() }
-        glow.present(persistent: isBreak, observeExternalClicks: observesExternalClicks, onDismiss: { [weak self] in self?.reset() })
+        glow.present(persistent: isBreak, onDismiss: { [weak self] in self?.reset() },
+                     onStartHour: { [weak self] in self?.start(minutes: 60) })
     }
 
     @objc private func didWake() { refresh() }
@@ -408,6 +419,9 @@ private final class TimerLauncherPanel: NSPanel {
 /// Keeps a user's mode override while the duration is edited.
 @MainActor
 final class TimerLauncherInput: ObservableObject {
+    let suggestsBreak: Bool
+    init(suggestsBreak: Bool = false) { self.suggestsBreak = suggestsBreak }
+
     @Published var text = "" {
         didSet { showsError = false }
     }
@@ -419,7 +433,10 @@ final class TimerLauncherInput: ObservableObject {
         return (minutes ?? 60) < 30 ? .break : .timer
     }
     @Published var showsError = false
-    var minutes: Int? { TimerDuration.minutes(from: text) }
+    var minutes: Int? {
+        if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && suggestsBreak { return 10 }
+        return TimerDuration.minutes(from: text)
+    }
 
     func toggleKind() { modeOverride = kind == .timer ? .break : .timer }
     func setDuration(_ minutes: Int) { text = "\(minutes) minutes" }
@@ -501,7 +518,7 @@ private struct TimerDurationLauncher: View {
                         Text(input.showsError ? "Enter 1–180 minutes" : actionTitle)
                             .font(.system(size: 13, weight: .medium))
                             .foregroundStyle(input.showsError ? Color.red : Color.primary)
-                        Text(input.kind == .break ? "One chime · stays until you click" : CheckInFlowPreferences.timerAction.title)
+                        Text(input.kind == .break ? "Full-screen reminder when your break ends" : CheckInFlowPreferences.timerAction.title)
                             .font(.system(size: 11)).foregroundStyle(.secondary)
                     }
                     Spacer()
@@ -517,6 +534,22 @@ private struct TimerDurationLauncher: View {
             .accessibilityLabel(input.showsError ? "Enter a duration from 1 to 180 minutes" : actionTitle)
             .padding(.horizontal, 8)
             .padding(.vertical, 7)
+            if input.suggestsBreak {
+                Button { controller.start(minutes: 60) } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "timer").frame(width: 28)
+                        Text("Start another 60 minute timer")
+                        Spacer()
+                        Text("⌘3 ↵").foregroundStyle(.secondary)
+                    }
+                    .font(.system(size: 13))
+                    .padding(.horizontal, 20)
+                    .frame(height: 58)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .focusable(false)
+            }
             Divider().opacity(0.5)
             HStack(spacing: 12) {
                 Button { input.toggleKind() } label: {
@@ -690,51 +723,52 @@ private final class TimerDragGripView: NSView {
     }
 }
 
-/// Non-activating, click-through windows preserve the current app and cover all connected displays.
+/// Work completion is click-through; break completion stays full-screen until an explicit action.
 @MainActor
 private final class TimerCompletionGlow {
     private var panels: [NSPanel] = []
     private var dismissal: Task<Void, Never>?
-    private var clickMonitors: [Any] = []
+    private var keyMonitor: Any?
 
-    func present(persistent: Bool = false, observeExternalClicks: Bool = true, onDismiss: (() -> Void)? = nil) {
+    func present(persistent: Bool = false, onDismiss: (() -> Void)? = nil, onStartHour: (() -> Void)? = nil) {
         dismiss()
         let bannerScreen = NSScreen.screens.first {
             NSMouseInRect(NSEvent.mouseLocation, $0.frame, false)
         } ?? NSScreen.main
         for screen in NSScreen.screens {
-            let panel = NSPanel(contentRect: screen.frame, styleMask: [.borderless, .nonactivatingPanel],
+            let panel = TimerCompletionPanel(contentRect: screen.frame, styleMask: [.borderless, .nonactivatingPanel],
                                 backing: .buffered, defer: false)
             panel.title = persistent ? "Break completed" : "Timer completed"
             panel.backgroundColor = .clear
             panel.isOpaque = false
             panel.hasShadow = false
-            panel.ignoresMouseEvents = true
+            panel.ignoresMouseEvents = !persistent
+            panel.acceptsKeyboard = persistent
             panel.hidesOnDeactivate = false
             panel.level = .screenSaver
             panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
             panel.isReleasedWhenClosed = false
-            panel.contentView = NSHostingView(rootView: TimerGlowView(
-                bannerTopInset: screen == bannerScreen ? screen.frame.maxY - screen.visibleFrame.maxY + 12 : nil,
-                persistent: persistent
-            ))
+            if persistent {
+                panel.contentView = NSHostingView(rootView: BreakCompletionView(
+                    onStartHour: { onStartHour?() }, onDismiss: { onDismiss?() }
+                ))
+            } else {
+                panel.contentView = NSHostingView(rootView: TimerGlowView(
+                    bannerTopInset: screen == bannerScreen ? screen.frame.maxY - screen.visibleFrame.maxY + 12 : nil
+                ))
+            }
             panel.setFrame(screen.frame, display: true)
             panel.orderFrontRegardless()
             panels.append(panel)
         }
         if persistent {
-            // Observe clicks without swallowing them or taking focus from the user's app.
-            let finish: () -> Void = { [weak self] in
-                self?.dismiss()
-                onDismiss?()
+            keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+                guard let self, self.panels.contains(where: { $0 === event.window }) else { return event }
+                if event.keyCode == 36 { onStartHour?() }
+                else { onDismiss?() }
+                return nil
             }
-            if let monitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown], handler: { event in
-                finish()
-                return event
-            }) { clickMonitors.append(monitor) }
-            if observeExternalClicks, let monitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown], handler: { _ in
-                Task { @MainActor in finish() }
-            }) { clickMonitors.append(monitor) }
+            panels.first { $0.screen == bannerScreen }?.makeKeyAndOrderFront(nil)
             return
         }
         dismissal = Task { [weak self] in
@@ -745,8 +779,8 @@ private final class TimerCompletionGlow {
     }
 
     func dismiss() {
-        clickMonitors.forEach { NSEvent.removeMonitor($0) }
-        clickMonitors.removeAll()
+        if let keyMonitor { NSEvent.removeMonitor(keyMonitor) }
+        keyMonitor = nil
         dismissal?.cancel()
         dismissal = nil
         panels.forEach { $0.close() }
@@ -756,7 +790,6 @@ private final class TimerCompletionGlow {
 
 private struct TimerGlowView: View {
     let bannerTopInset: CGFloat?
-    let persistent: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var visible = false
 
@@ -770,10 +803,10 @@ private struct TimerGlowView: View {
         .opacity(visible ? 1 : 0)
         .overlay(alignment: .top) {
             if let bannerTopInset {
-                TimerCompletionBanner(isBreak: persistent)
+                TimerCompletionBanner()
                     .padding(.horizontal, 16)
                     .padding(.top, bannerTopInset)
-                    .opacity(persistent || visible ? 1 : 0)
+                    .opacity(visible ? 1 : 0)
             }
         }
         .ignoresSafeArea()
@@ -788,16 +821,15 @@ private struct TimerGlowView: View {
 }
 
 private struct TimerCompletionBanner: View {
-    let isBreak: Bool
     var body: some View {
         HStack(spacing: 18) {
             Image(systemName: "checkmark.circle")
                 .font(.system(size: 26, weight: .medium))
                 .foregroundStyle(.green.opacity(0.85))
             VStack(alignment: .leading, spacing: 4) {
-                Text(isBreak ? "Break is over" : "Timer completed")
+                Text("Timer completed")
                     .font(.system(size: 16, weight: .semibold))
-                Text(isBreak ? "Click anywhere when you’re ready." : "Time’s up.")
+                Text("Time’s up.")
                     .font(.system(size: 14))
                     .foregroundStyle(.secondary)
             }
@@ -816,5 +848,49 @@ private struct TimerCompletionBanner: View {
         .shadow(color: .black.opacity(0.3), radius: 18, y: 8)
         .preferredColorScheme(.dark)
         .accessibilityElement(children: .combine)
+    }
+}
+
+private final class TimerCompletionPanel: NSPanel {
+    var acceptsKeyboard = false
+    override var canBecomeKey: Bool { acceptsKeyboard }
+    override var canBecomeMain: Bool { false }
+}
+
+private struct BreakCompletionView: View {
+    let onStartHour: () -> Void
+    let onDismiss: () -> Void
+
+    var body: some View {
+        ZStack {
+            Color(red: 0.035, green: 0.12, blue: 0.09)
+                .opacity(0.9)
+            VStack(spacing: 28) {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 88)).foregroundStyle(.green)
+                Text("Break is over")
+                    .font(.system(size: 72, weight: .bold))
+                    .minimumScaleFactor(0.5)
+                    .lineLimit(1)
+                Text("Ready for your next hour?")
+                    .font(.system(size: 28)).foregroundStyle(.secondary)
+                Button("Start another hour", action: onStartHour)
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .tint(.green)
+                    .keyboardShortcut(.return, modifiers: [])
+                    .padding(.top, 16)
+                Button("Dismiss", action: onDismiss)
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+                    .keyboardShortcut(.escape, modifiers: [])
+                Text("Press any key to dismiss · Return starts another hour")
+                    .font(.system(size: 14)).foregroundStyle(.secondary)
+            }
+            .padding(48)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .ignoresSafeArea()
+        .preferredColorScheme(.dark)
     }
 }
