@@ -3,6 +3,12 @@ import AppKit
 enum FocusTimerPresentationTests {
     @MainActor
     static func runChecks() async {
+        func waitUntil(_ condition: () -> Bool) async {
+            let deadline = Date().addingTimeInterval(5)
+            while !condition() && Date() < deadline {
+                try? await Task.sleep(for: .milliseconds(25))
+            }
+        }
         let app = NSApplication.shared
         app.setActivationPolicy(.accessory)
         let originalAction = UserDefaults.standard.object(forKey: CheckInFlowPreferences.timerActionKey)
@@ -50,7 +56,7 @@ enum FocusTimerPresentationTests {
         // Include a countdown tick to catch hidden status items resurfacing during image updates.
         try? await Task.sleep(for: .milliseconds(1_100))
         let panel = app.windows.first { $0.title == "Focus timer" && $0.isVisible }!
-        precondition(panel.frame.size == NSSize(width: 220, height: 36))
+        precondition(panel.frame.size == NSSize(width: 260, height: 36))
         precondition(panel.level == .screenSaver)
         precondition(panel.collectionBehavior.contains(.canJoinAllSpaces))
         precondition(panel.collectionBehavior.contains(.fullScreenAuxiliary))
@@ -135,14 +141,16 @@ enum FocusTimerPresentationTests {
         precondition(alerts.count == NSScreen.screens.count)
         precondition(alerts.allSatisfy { $0.ignoresMouseEvents && !$0.canBecomeKey && $0.level == .screenSaver })
         precondition(controller.session.phase == .idle, "Previewing must not start or complete a session.")
-        try? await Task.sleep(for: .milliseconds(3_200))
+        await waitUntil { alerts.allSatisfy { !$0.isVisible } }
         precondition(alerts.allSatisfy { !$0.isVisible }, "The halo and banner must close after three seconds.")
         controller.start(minutes: 10, kind: .break)
         let breakFinish = controller.session.deadline!
         controller.refresh(at: breakFinish)
         let breakAlerts = app.windows.filter { $0.title == "Break completed" && $0.isVisible }
         precondition(breakAlerts.count == NSScreen.screens.count)
-        precondition(breakAlerts.allSatisfy { $0.ignoresMouseEvents && !$0.canBecomeKey })
+        precondition(breakAlerts.allSatisfy { !$0.ignoresMouseEvents && $0.canBecomeKey })
+        precondition(breakAlerts.allSatisfy { $0.frame == $0.screen?.frame },
+                     "Break completion must fill each display.")
         try? await Task.sleep(for: .milliseconds(3_200))
         precondition(breakAlerts.allSatisfy { $0.isVisible }, "Break banners must outlast the halo; phase=\(controller.session.phase).")
         controller.refresh(at: breakFinish.addingTimeInterval(60))
@@ -152,8 +160,73 @@ enum FocusTimerPresentationTests {
                                        clickCount: 1, pressure: 1)!
         app.postEvent(click, atStart: false)
         try? await Task.sleep(for: .milliseconds(300))
-        precondition(controller.session.phase == .idle, "Clicking anywhere must dismiss a completed break.")
+        precondition(controller.session.phase == .completed,
+                     "Unrelated clicks must not clear the full-screen break reminder.")
+        let returnKey = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [],
+            timestamp: ProcessInfo.processInfo.systemUptime,
+            windowNumber: app.keyWindow!.windowNumber, context: nil,
+            characters: "\r", charactersIgnoringModifiers: "\r", isARepeat: false, keyCode: 36)!
+        app.sendEvent(returnKey)
+        try? await Task.sleep(for: .milliseconds(300))
+        precondition(controller.session.phase == .running && controller.session.duration == 3_600,
+                     "Return on the break completion page must start another hour.")
         precondition(breakAlerts.allSatisfy { !$0.isVisible })
+        controller.refresh(at: controller.session.deadline!)
+        precondition(controller.suggestsBreak, "Completing an hour must suggest a break.")
+        controller.reset()
+        precondition(controller.suggestsBreak, "Acknowledging a completed hour must preserve the suggestion.")
+        let suggestedInput = TimerLauncherInput(suggestsBreak: controller.suggestsBreak)
+        precondition(suggestedInput.minutes == 10 && suggestedInput.kind == .break)
+        suggestedInput.setDuration(60)
+        precondition(suggestedInput.minutes == 60 && suggestedInput.kind == .timer)
+        controller.presentLauncher()
+        try? await Task.sleep(for: .milliseconds(200))
+        let hourAlternative = app.keyWindow!
+        precondition(hourAlternative.frame.height == 222, "Break suggestion must also show the second hour option.")
+        let chooseHour = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: .command,
+            timestamp: ProcessInfo.processInfo.systemUptime,
+            windowNumber: hourAlternative.windowNumber, context: nil,
+            characters: "3", charactersIgnoringModifiers: "3", isARepeat: false, keyCode: 20)!
+        app.postEvent(chooseHour, atStart: false)
+        func durationField(in view: NSView?) -> NSTextField? {
+            if let field = view as? NSTextField { return field }
+            return view?.subviews.lazy.compactMap { durationField(in: $0) }.first
+        }
+        await waitUntil { durationField(in: hourAlternative.contentView)?.stringValue == "60 minutes" }
+        precondition(durationField(in: hourAlternative.contentView)?.stringValue == "60 minutes",
+                     "Command-3 must fill the hour alternative.")
+        let submitHour = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [],
+            timestamp: ProcessInfo.processInfo.systemUptime,
+            windowNumber: hourAlternative.windowNumber, context: nil,
+            characters: "\r", charactersIgnoringModifiers: "\r", isARepeat: false, keyCode: 36)!
+        app.postEvent(submitHour, atStart: false)
+        await waitUntil { controller.session.phase == .running }
+        precondition(controller.session.phase == .running && controller.session.kind == .timer && controller.session.duration == 3_600,
+                     "Command-3 and Return must start the hour alternative from the suggested launcher: \(controller.session.phase), \(controller.session.kind), \(controller.session.duration).")
+        controller.refresh(at: controller.session.deadline!)
+        controller.presentLauncher()
+        try? await Task.sleep(for: .milliseconds(200))
+        let breakLauncher = app.keyWindow!
+        let submitBreak = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [],
+            timestamp: ProcessInfo.processInfo.systemUptime,
+            windowNumber: breakLauncher.windowNumber, context: nil,
+            characters: "\r", charactersIgnoringModifiers: "\r", isARepeat: false, keyCode: 36)!
+        app.sendEvent(submitBreak)
+        try? await Task.sleep(for: .milliseconds(200))
+        precondition(controller.session.phase == .running && controller.session.kind == .break && controller.session.duration == 600,
+                     "The launcher's default after an hour must start a ten-minute break.")
+        precondition(!controller.suggestsBreak)
+        controller.refresh(at: controller.session.deadline!)
+        let dismissWithKey = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [],
+            timestamp: ProcessInfo.processInfo.systemUptime,
+            windowNumber: app.keyWindow!.windowNumber, context: nil,
+            characters: "x", charactersIgnoringModifiers: "x", isARepeat: false, keyCode: 7)!
+        app.postEvent(dismissWithKey, atStart: false)
+        try? await Task.sleep(for: .milliseconds(200))
+        precondition(controller.session.phase == .idle,
+                     "Any ordinary key must dismiss the break completion screen.")
+        precondition(!app.windows.contains { $0.title == "Break completed" && $0.isVisible })
+        controller.reset()
         var transitions: [Bool?] = []
         controller.configure { transitions.append($0) }
         for action in TimerCompletionAction.allCases {
@@ -203,7 +276,7 @@ enum FocusTimerPresentationTests {
         precondition(transitions.count == 1 && transitions[0] == nil, "Manual check-ins use their own setting")
         controller.reset()
         print("PASS: no intrusive form on completion or configure, click to continue, persistent pending indicator, detached timer, and per-session choices")
-        print("Focus timer presentation tests passed: default start, pause, detach, window level, attach, resume, cancel, non-interactive completion alert and three-second dismissal")
+        print("Focus timer presentation tests passed: default start, pause, detach, window level, attach, resume, cancel, work completion glow, break suggestion, persistent full-screen break completion and Return to restart")
     }
 }
 
